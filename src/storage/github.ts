@@ -10,7 +10,7 @@ export interface GitHubAuth {
   username?: string
 }
 
-interface DeviceCodeResponse {
+export interface DeviceCodeResponse {
   device_code: string
   user_code: string
   verification_uri: string

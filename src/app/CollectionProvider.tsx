@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   clearGitHubAuth,
   beginDeviceLogin,
+  type DeviceCodeResponse,
   GitHubCollectionRepository,
   getGitHubUsername,
   pollDeviceLogin,
@@ -42,6 +43,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [auth, setAuth] = useState<GitHubAuth | null>(() => readGitHubAuth())
   const [loginPrompt, setLoginPrompt] = useState<{ url: string; code: string } | null>(null)
+  const pendingDeviceCode = useRef<DeviceCodeResponse | null>(null)
   const latestData = useRef(data)
   const latestRemoteSha = useRef(remoteSha)
   const syncRef = useRef<() => Promise<void>>(async () => undefined)
@@ -239,17 +241,23 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       },
       login: async () => {
         const deviceCode = await beginDeviceLogin()
+        pendingDeviceCode.current = deviceCode
         setLoginPrompt({ url: deviceCode.verification_uri, code: deviceCode.user_code })
-        window.open(deviceCode.verification_uri, '_blank', 'noopener,noreferrer')
+      },
+      completeLogin: async () => {
+        const deviceCode = pendingDeviceCode.current
+        if (!deviceCode) throw new Error('Najpierw wygeneruj kod logowania GitHub.')
         const nextAuth = await pollDeviceLogin(deviceCode)
         const username = await getGitHubUsername(nextAuth)
         const authenticated = { ...nextAuth, username }
         writeGitHubAuth(authenticated)
         setAuth(authenticated)
+        pendingDeviceCode.current = null
         setLoginPrompt(null)
       },
       logout: () => {
         clearGitHubAuth()
+        pendingDeviceCode.current = null
         setAuth(null)
       },
     }),

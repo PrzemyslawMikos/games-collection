@@ -13,7 +13,7 @@ const navItems = [
 ]
 
 export function Layout() {
-  const { auth, dirty, saving, error, sync, login, loginPrompt, setError } = useCollection()
+  const { auth, dirty, saving, error, sync, login, completeLogin, loginPrompt, setError } = useCollection()
   const [menuOpen, setMenuOpen] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => getThemePreference())
   const navigate = useNavigate()
@@ -36,7 +36,8 @@ export function Layout() {
   const runSync = async (): Promise<void> => {
     try {
       if (!auth) {
-        await login()
+        if (loginPrompt) await completeLogin()
+        else await login()
       } else {
         await sync()
       }
@@ -91,7 +92,7 @@ export function Layout() {
           </div>
           <button className="button button-primary button-compact" type="button" disabled={saving} onClick={() => void runSync()}>
             <Cloud size={16} />
-            {saving ? 'Synchronizuję…' : auth ? 'Synchronizuj' : 'Połącz GitHub'}
+            {saving ? 'Synchronizuję…' : auth ? 'Synchronizuj' : loginPrompt ? 'Potwierdź autoryzację' : 'Połącz GitHub'}
           </button>
         </header>
         {error && (
@@ -100,7 +101,7 @@ export function Layout() {
             <button className="icon-button" type="button" aria-label="Ukryj komunikat" onClick={() => setError(null)}><X size={16} /></button>
           </div>
         )}
-        {loginPrompt && <div className="info-banner login-prompt"><span>Wpisz ten kod na stronie GitHub:</span><strong>{loginPrompt.code}</strong><a href={loginPrompt.url} target="_blank" rel="noreferrer">Otwórz GitHub</a></div>}
+        {loginPrompt && <div className="info-banner login-prompt"><span>Najpierw otwórz GitHub i wpisz ten kod:</span><strong>{loginPrompt.code}</strong><a href={loginPrompt.url} target="_blank" rel="noreferrer">Otwórz GitHub</a><button className="button button-small button-secondary" type="button" disabled={saving} onClick={() => void completeLogin()}>Potwierdź autoryzację</button></div>}
         <div className="page-content">
           <Outlet />
         </div>

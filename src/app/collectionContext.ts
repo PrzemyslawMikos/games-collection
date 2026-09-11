@@ -31,6 +31,7 @@ export interface CollectionContextValue {
   loadRemote: () => Promise<void>
   sync: () => Promise<void>
   login: () => Promise<void>
+  completeLogin: () => Promise<void>
   logout: () => void
 }
 
