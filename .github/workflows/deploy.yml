@@ -66,3 +66,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Add deployment link to summary
+        run: |
+          echo "## Deployment complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open the application: [${{ steps.deployment.outputs.page_url }}](${{ steps.deployment.outputs.page_url }})" >> "$GITHUB_STEP_SUMMARY"
