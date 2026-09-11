@@ -73,6 +73,20 @@ test('adds and displays a canonical game', async ({ page }) => {
   await expect(doesItPlayLink).toHaveAttribute('rel', 'noreferrer')
 
   await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.mobile-filter-field')).toBeVisible()
+  await expect(page.locator('.filter-tabs')).toBeHidden()
+  const expandedGame = page.locator('.game-group').filter({ hasText: 'Testowy tytuł' })
+  const expandedBody = expandedGame.locator('.game-group-body')
+  const expandedActions = expandedBody.locator('.entry-actions').first()
+  const expandedBodyBox = await expandedBody.boundingBox()
+  const expandedActionsBox = await expandedActions.boundingBox()
+  expect(expandedBodyBox).not.toBeNull()
+  expect(expandedActionsBox).not.toBeNull()
+  if (expandedBodyBox && expandedActionsBox) {
+    expect(expandedBodyBox.x + expandedBodyBox.width).toBeLessThanOrEqual(390)
+    expect(expandedActionsBox.x + expandedActionsBox.width).toBeLessThanOrEqual(390)
+  }
+
   await page.goto('./games')
   const gameCard = page.locator('.canonical-card').filter({ hasText: 'Testowy tytuł' })
   await expect(gameCard).toBeVisible()

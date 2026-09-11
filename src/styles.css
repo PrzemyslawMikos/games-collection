@@ -200,6 +200,7 @@ h2 { font-size: 1.12rem; letter-spacing: -.018em; }
 .filter-tabs { display: flex; gap: 2px; padding-left: 8px; border-left: 1px solid var(--line); }
 .filter-tabs button { display: inline-flex; align-items: center; gap: 4px; min-height: 31px; padding: 0 8px; border: 0; border-radius: 7px; color: var(--muted); background: transparent; font-size: .64rem; }
 .filter-tabs button.active { color: var(--coral-dark); background: color-mix(in srgb, var(--coral) 11%, transparent); font-weight: 700; }
+.mobile-filter-field { display: none; }
 .game-list, .canonical-list { display: grid; gap: 10px; }
 .game-group { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 5px 16px rgba(24, 56, 73, .04); }
 .game-group-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; }
@@ -374,18 +375,24 @@ code { overflow: auto; padding: 7px 9px; border-radius: 6px; color: var(--coral-
   .chart-legend-grid { grid-template-columns: 1fr; }
   .recent-row { grid-template-columns: 33px 1fr auto; }
   .recent-row .pill, .recent-price { display: none; }
-  .toolbar { width: 100%; min-width: 0; align-items: stretch; flex-direction: column; }
+  .toolbar { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px 10px; }
   .search-field, .select-field, .filter-tabs { width: 100%; max-width: 100%; min-width: 0; }
-  .select-field { justify-content: space-between; padding: 7px 0 0; border-top: 1px solid var(--line); border-left: 0; }
-  .select-field select { min-width: 0; flex: 1; }
-  .filter-tabs { flex-wrap: nowrap; }
+  .search-field { grid-column: 1 / -1; }
+  .select-field { display: grid; justify-content: stretch; gap: 5px; padding: 7px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+  .select-field select { width: 100%; min-width: 0; }
+  .filter-tabs { display: none; }
+  .mobile-filter-field { display: grid; }
   .game-group-header { padding: 10px; }
   .group-summary .mini-status { display: none; }
-  .game-group-body { padding-left: 13px; }
-  .entry-row { grid-template-columns: 61px minmax(0, 1fr) auto auto; gap: 6px; }
+  .group-toggle { flex: 1; align-items: flex-start; }
+  .game-group-body { padding: 0 10px 10px; }
+  .group-actions { flex-wrap: wrap; }
+  .group-actions .button { flex: 1 1 130px; }
+  .entry-row { grid-template-columns: 61px minmax(0, 1fr) auto; gap: 6px 8px; padding: 13px 0; }
   .entry-row .pill { grid-column: 2; justify-self: start; }
   .entry-price { grid-column: 3; grid-row: 1 / span 2; }
-  .entry-actions { grid-column: 4; grid-row: 1 / span 2; flex-direction: column; }
+  .entry-actions { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; margin-top: 3px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+  .plan-row .entry-actions { grid-row: 2; }
   .plan-date { display: none; }
   .flat-table { overflow: hidden; }
   .flat-table-header { display: none; }
