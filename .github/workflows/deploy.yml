@@ -1,0 +1,68 @@
+name: Deploy Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm test
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser smoke test
+        run: npm run test:e2e
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_GITHUB_APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
+          VITE_AUTH_PROXY_URL: ${{ secrets.AUTH_PROXY_URL }}
+          VITE_DATA_REPOSITORY_OWNER: ${{ secrets.DATA_REPOSITORY_OWNER }}
+          VITE_DATA_REPOSITORY_NAME: ${{ secrets.DATA_REPOSITORY_NAME }}
+          VITE_DATA_BRANCH: data
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

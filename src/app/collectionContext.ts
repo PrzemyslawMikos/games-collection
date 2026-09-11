@@ -1,0 +1,37 @@
+import { createContext } from 'react'
+import type { CollectionData, Game, GameEntry, GamePlan } from '../domain/model'
+import type { CollectionStats } from '../domain/stats'
+import type { GitHubAuth } from '../storage/github'
+
+export interface CollectionContextValue {
+  data: CollectionData
+  stats: CollectionStats
+  loading: boolean
+  saving: boolean
+  dirty: boolean
+  remoteSha: string | null
+  error: string | null
+  auth: GitHubAuth | null
+  loginPrompt: { url: string; code: string } | null
+  repositoryReference: string
+  setError: (message: string | null) => void
+  replaceData: (data: CollectionData) => void
+  addGame: (title: string) => Game | null
+  updateGame: (gameId: string, values: Partial<Pick<Game, 'title' | 'aliases' | 'notes'>>) => void
+  mergeGames: (targetId: string, sourceId: string) => void
+  deleteGame: (gameId: string) => void
+  addEntry: (gameId: string, values: Partial<Omit<GameEntry, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
+  updateEntry: (entryId: string, values: Partial<Omit<GameEntry, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
+  deleteEntry: (entryId: string) => void
+  addPlan: (gameId: string, values: Partial<Omit<GamePlan, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
+  updatePlan: (planId: string, values: Partial<Omit<GamePlan, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
+  deletePlan: (planId: string) => void
+  convertPlan: (planId: string, values: Partial<Omit<GameEntry, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
+  saveLocal: () => Promise<void>
+  loadRemote: () => Promise<void>
+  sync: () => Promise<void>
+  login: () => Promise<void>
+  logout: () => void
+}
+
+export const CollectionContext = createContext<CollectionContextValue | null>(null)

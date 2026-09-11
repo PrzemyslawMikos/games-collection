@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      const base = '/games-collection/'
+      const route = window.location.pathname.startsWith(base)
+        ? window.location.pathname.slice(base.length)
+        : window.location.pathname.replace(/^\//, '')
+      const query = window.location.search
+      const hash = window.location.hash
+      window.location.replace(`${base}?p=/${route}${query}${hash}`)
+    </script>
+  </head>
+  <body></body>
+</html>
