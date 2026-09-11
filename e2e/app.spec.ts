@@ -39,7 +39,10 @@ test('adds and displays a canonical game', async ({ page }) => {
   await expect(page.getByText('Testowy tytuł')).toBeVisible()
   await page.locator('.group-toggle').filter({ hasText: 'Testowy tytuł' }).click()
   await page.getByRole('button', { name: 'Dodaj egzemplarz' }).first().click()
-  await page.getByRole('textbox', { name: 'Platforma' }).fill('PS4')
+  await page.getByRole('dialog').getByRole('combobox', { name: 'Platforma' }).fill('PS4')
+  await page.getByRole('option', { name: 'Utwórz "PS4"' }).click()
+  await page.getByRole('combobox', { name: 'Waluta' }).click()
+  await page.getByRole('option', { name: 'Utwórz "PLN"' }).click()
   await page.getByRole('button', { name: 'Dodaj egzemplarz' }).last().click()
 
   const completionFilter = page.locator('.toolbar select').nth(1)
@@ -68,6 +71,8 @@ test('adds and displays a canonical game', async ({ page }) => {
   await completionFilter.selectOption('all')
 
   await page.getByRole('button', { name: 'Dodaj plan' }).first().click()
+  await page.getByRole('combobox', { name: 'Waluta' }).click()
+  await page.getByRole('option', { name: 'PLN' }).click()
   await page.getByRole('button', { name: 'Dodaj plan' }).last().click()
 
   const doesItPlayLink = page.getByRole('link', { name: 'Sprawdź Testowy tytuł w DoesItPlay' })
@@ -112,4 +117,46 @@ test('adds and displays a canonical game', async ({ page }) => {
     expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(390)
     expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(390)
   }
+})
+
+test('suggests existing values and creates new platform and currency values', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Kolekcja' }).click()
+  await page.getByRole('button', { name: 'Dodaj grę' }).first().click()
+  await page.getByLabel('Tytuł gry').fill('Sugestie testowe')
+  await page.getByRole('button', { name: 'Dodaj grę' }).last().click()
+  await page.locator('.group-toggle').filter({ hasText: 'Sugestie testowe' }).click()
+
+  await page.getByRole('button', { name: 'Dodaj egzemplarz' }).first().click()
+  let dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Platforma' }).fill('PS4')
+  await dialog.getByRole('option', { name: 'Utwórz "PS4"' }).click()
+  await dialog.getByRole('combobox', { name: 'Waluta' }).click()
+  await dialog.getByRole('option', { name: 'Utwórz "PLN"' }).click()
+  await dialog.getByRole('button', { name: 'Dodaj egzemplarz' }).click()
+
+  await page.getByRole('button', { name: 'Dodaj egzemplarz' }).first().click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('combobox', { name: 'Platforma' })).toHaveValue('PS4')
+  await expect(dialog.getByRole('combobox', { name: 'Waluta' })).toHaveValue('PLN')
+  await dialog.getByRole('combobox', { name: 'Platforma' }).fill('ps4')
+  await dialog.getByRole('option', { name: 'PS4' }).click()
+  await dialog.getByRole('combobox', { name: 'Waluta' }).click()
+  await dialog.getByRole('option', { name: 'PLN' }).click()
+  await dialog.getByRole('button', { name: 'Dodaj egzemplarz' }).click()
+
+  await page.getByRole('button', { name: 'Dodaj plan' }).first().click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('combobox', { name: 'Platforma' })).toHaveValue('PS4')
+  await expect(dialog.getByRole('combobox', { name: 'Waluta' })).toHaveValue('PLN')
+  await dialog.getByRole('combobox', { name: 'Platforma' }).fill('Switch 2')
+  await dialog.getByRole('option', { name: 'Utwórz "Switch 2"' }).click()
+  await dialog.getByRole('combobox', { name: 'Waluta' }).fill('eur')
+  await dialog.getByRole('option', { name: 'Utwórz "EUR"' }).click()
+  await dialog.getByRole('button', { name: 'Dodaj plan' }).click()
+
+  await page.getByRole('button', { name: 'Edytuj plan' }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('combobox', { name: 'Platforma' })).toHaveValue('Switch 2')
+  await expect(dialog.getByRole('combobox', { name: 'Waluta' })).toHaveValue('EUR')
 })

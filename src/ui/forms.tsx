@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { CompletionStatus, Condition, GameEntry, GamePlan, Priority } from '../domain/model'
 import { useTranslation } from '../i18n'
 import { conditionLabelKey, completionLabelKey, planStatusLabelKey, priorityLabelKey } from './format'
+import { AutocompleteField } from './AutocompleteField'
 
 interface GameFormProps {
   initial?: { title?: string; aliases?: string[]; notes?: string }
@@ -35,16 +36,24 @@ export function GameForm({ initial, submitLabel, onSubmit, onCancel }: GameFormP
 interface EntryFormProps {
   initial?: Partial<GameEntry>
   submitLabel: string
+  platformSuggestions: string[]
+  currencySuggestions: string[]
   onSubmit: (values: Partial<Omit<GameEntry, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
   onCancel?: () => void
 }
 
-export function EntryForm({ initial, submitLabel, onSubmit, onCancel }: EntryFormProps) {
+export function EntryForm({ initial, submitLabel, platformSuggestions, currencySuggestions, onSubmit, onCancel }: EntryFormProps) {
   const { t } = useTranslation()
-  const [platform, setPlatform] = useState(initial?.platform ?? '')
+  const defaultPlatform = initial?.platform ?? (!initial && platformSuggestions.length === 1 ? platformSuggestions[0] : '')
+  const defaultCurrency = initial?.currency ?? (!initial && currencySuggestions.length === 1 ? currencySuggestions[0] : 'PLN')
+  const [platform, setPlatform] = useState(defaultPlatform)
+  const [platformConfirmed, setPlatformConfirmed] = useState(() => Boolean(initial?.platform) || (!initial && platformSuggestions.length === 1))
+  const [platformError, setPlatformError] = useState('')
   const [version, setVersion] = useState(initial?.version ?? '')
   const [price, setPrice] = useState(initial?.price?.toString() ?? '')
-  const [currency, setCurrency] = useState(initial?.currency ?? 'PLN')
+  const [currency, setCurrency] = useState(defaultCurrency)
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(() => Boolean(initial?.currency) || (!initial && currencySuggestions.length === 1))
+  const [currencyError, setCurrencyError] = useState('')
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? '')
   const [condition, setCondition] = useState<Condition>(initial?.condition ?? 'unknown')
   const [completion, setCompletion] = useState<CompletionStatus>(initial?.completion ?? 'not-started')
@@ -52,13 +61,28 @@ export function EntryForm({ initial, submitLabel, onSubmit, onCancel }: EntryFor
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
-    if (!platform.trim()) return
+    if (!platform.trim()) {
+      setPlatformError(t('forms.requiredField'))
+      return
+    }
+    if (!platformConfirmed) {
+      setPlatformError(t('forms.chooseSuggestion'))
+      return
+    }
+    if (currency.trim().length !== 3) {
+      setCurrencyError(t('forms.currencyLength'))
+      return
+    }
+    if (!currencyConfirmed) {
+      setCurrencyError(t('forms.chooseSuggestion'))
+      return
+    }
     const parsedPrice = price.trim() ? Number(price.replace(',', '.')) : null
     onSubmit({
       platform: platform.trim(),
       version: version.trim(),
       price: parsedPrice !== null && Number.isFinite(parsedPrice) ? parsedPrice : null,
-      currency: currency.toUpperCase(),
+      currency: currency.trim().toUpperCase(),
       purchaseDate: purchaseDate || null,
       condition,
       completion,
@@ -69,12 +93,35 @@ export function EntryForm({ initial, submitLabel, onSubmit, onCancel }: EntryFor
   return (
     <form className="form-stack" onSubmit={submit}>
       <div className="form-grid form-grid-two">
-        <label className="field"><span>{t('forms.platform')}</span><input autoFocus value={platform} onChange={(event) => setPlatform(event.target.value)} placeholder={t('forms.platformPlaceholder')} required /></label>
+        <AutocompleteField
+          label={t('forms.platform')}
+          value={platform}
+          suggestions={platformSuggestions}
+          placeholder={t('forms.platformPlaceholder')}
+          createLabel={t('forms.createValue', { value: platform.trim() })}
+          error={platformError}
+          required
+          autoFocus
+          onChange={(value) => { setPlatform(value); setPlatformConfirmed(false); setPlatformError('') }}
+          onCommit={(value) => { setPlatform(value.trim()); setPlatformConfirmed(true); setPlatformError('') }}
+        />
         <label className="field"><span>{t('forms.version')}</span><input value={version} onChange={(event) => setVersion(event.target.value)} placeholder={t('forms.versionPlaceholder')} /></label>
       </div>
       <div className="form-grid form-grid-three">
         <label className="field"><span>{t('forms.purchasePrice')}</span><input type="number" min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} placeholder={t('common.optional')} /></label>
-        <label className="field"><span>{t('forms.currency')}</span><input maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value)} /></label>
+        <AutocompleteField
+          label={t('forms.currency')}
+          value={currency}
+          suggestions={currencySuggestions}
+          createLabel={t('forms.createValue', { value: currency.trim().toUpperCase() })}
+          error={currencyError}
+          maxLength={3}
+          required
+          canCreate={(value) => value.length === 3}
+          formatValue={(value) => value.trim().toUpperCase()}
+          onChange={(value) => { setCurrency(value); setCurrencyConfirmed(false); setCurrencyError('') }}
+          onCommit={(value) => { setCurrency(value.trim().toUpperCase()); setCurrencyConfirmed(true); setCurrencyError('') }}
+        />
         <label className="field"><span>{t('forms.purchaseDate')}</span><input type="date" value={purchaseDate} onChange={(event) => setPurchaseDate(event.target.value)} /></label>
       </div>
       <div className="form-grid form-grid-two">
@@ -90,16 +137,24 @@ export function EntryForm({ initial, submitLabel, onSubmit, onCancel }: EntryFor
 interface PlanFormProps {
   initial?: Partial<GamePlan>
   submitLabel: string
+  platformSuggestions: string[]
+  currencySuggestions: string[]
   onSubmit: (values: Partial<Omit<GamePlan, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
   onCancel?: () => void
 }
 
-export function PlanForm({ initial, submitLabel, onSubmit, onCancel }: PlanFormProps) {
+export function PlanForm({ initial, submitLabel, platformSuggestions, currencySuggestions, onSubmit, onCancel }: PlanFormProps) {
   const { t } = useTranslation()
-  const [platform, setPlatform] = useState(initial?.platform ?? '')
+  const defaultPlatform = initial?.platform ?? (!initial && platformSuggestions.length === 1 ? platformSuggestions[0] : '')
+  const defaultCurrency = initial?.currency ?? (!initial && currencySuggestions.length === 1 ? currencySuggestions[0] : 'PLN')
+  const [platform, setPlatform] = useState(defaultPlatform)
+  const [platformConfirmed, setPlatformConfirmed] = useState(() => !initial || Boolean(initial.platform) || platformSuggestions.length === 1)
+  const [platformError, setPlatformError] = useState('')
   const [version, setVersion] = useState(initial?.version ?? '')
   const [targetPrice, setTargetPrice] = useState(initial?.targetPrice?.toString() ?? '')
-  const [currency, setCurrency] = useState(initial?.currency ?? 'PLN')
+  const [currency, setCurrency] = useState(defaultCurrency)
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(() => Boolean(initial?.currency) || (!initial && currencySuggestions.length === 1))
+  const [currencyError, setCurrencyError] = useState('')
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? 'normal')
   const [plannedDate, setPlannedDate] = useState(initial?.plannedDate ?? '')
   const [status, setStatus] = useState(initial?.status ?? 'planned')
@@ -107,12 +162,24 @@ export function PlanForm({ initial, submitLabel, onSubmit, onCancel }: PlanFormP
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
+    if (platform.trim() && !platformConfirmed) {
+      setPlatformError(t('forms.chooseSuggestion'))
+      return
+    }
+    if (currency.trim().length !== 3) {
+      setCurrencyError(t('forms.currencyLength'))
+      return
+    }
+    if (!currencyConfirmed) {
+      setCurrencyError(t('forms.chooseSuggestion'))
+      return
+    }
     const parsedPrice = targetPrice.trim() ? Number(targetPrice.replace(',', '.')) : null
     onSubmit({
       platform: platform.trim(),
       version: version.trim(),
       targetPrice: parsedPrice !== null && Number.isFinite(parsedPrice) ? parsedPrice : null,
-      currency: currency.toUpperCase(),
+      currency: currency.trim().toUpperCase(),
       priority,
       plannedDate: plannedDate || null,
       status,
@@ -123,12 +190,34 @@ export function PlanForm({ initial, submitLabel, onSubmit, onCancel }: PlanFormP
   return (
     <form className="form-stack" onSubmit={submit}>
       <div className="form-grid form-grid-two">
-        <label className="field"><span>{t('forms.platform')}</span><input autoFocus value={platform} onChange={(event) => setPlatform(event.target.value)} placeholder={t('common.anyPlatform')} /></label>
+        <AutocompleteField
+          label={t('forms.platform')}
+          value={platform}
+          suggestions={platformSuggestions}
+          placeholder={t('common.anyPlatform')}
+          createLabel={t('forms.createValue', { value: platform.trim() })}
+          error={platformError}
+          autoFocus
+          onChange={(value) => { setPlatform(value); setPlatformConfirmed(false); setPlatformError('') }}
+          onCommit={(value) => { setPlatform(value.trim()); setPlatformConfirmed(true); setPlatformError('') }}
+        />
         <label className="field"><span>{t('forms.version')}</span><input value={version} onChange={(event) => setVersion(event.target.value)} placeholder={t('common.optional')} /></label>
       </div>
       <div className="form-grid form-grid-three">
         <label className="field"><span>{t('forms.targetPrice')}</span><input type="number" min="0" step="0.01" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder={t('common.optional')} /></label>
-        <label className="field"><span>{t('forms.currency')}</span><input maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value)} /></label>
+        <AutocompleteField
+          label={t('forms.currency')}
+          value={currency}
+          suggestions={currencySuggestions}
+          createLabel={t('forms.createValue', { value: currency.trim().toUpperCase() })}
+          error={currencyError}
+          maxLength={3}
+          required
+          canCreate={(value) => value.length === 3}
+          formatValue={(value) => value.trim().toUpperCase()}
+          onChange={(value) => { setCurrency(value); setCurrencyConfirmed(false); setCurrencyError('') }}
+          onCommit={(value) => { setCurrency(value.trim().toUpperCase()); setCurrencyConfirmed(true); setCurrencyError('') }}
+        />
         <label className="field"><span>{t('forms.priority')}</span><select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabelKey).map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}</select></label>
       </div>
       <div className="form-grid form-grid-two">

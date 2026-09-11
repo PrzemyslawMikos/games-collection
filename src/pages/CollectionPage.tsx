@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, ExternalLink, Filter, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useCollection } from '../app/useCollection'
 import { matchesTitle } from '../domain/normalize'
+import { collectSuggestions } from '../domain/suggestions'
 import type { Game, GameEntry, GamePlan } from '../domain/model'
 import { doesItPlayListUrl } from '../integrations/doesItPlay'
 import { useTranslation } from '../i18n'
@@ -30,6 +31,11 @@ export function CollectionPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [modal, setModal] = useState<ModalState>(null)
 
+  const platformSuggestions = useMemo(() => collectSuggestions(data.entries.map((entry) => entry.platform).concat(data.plans.map((plan) => plan.platform))), [data])
+  const currencySuggestions = useMemo(() => collectSuggestions(
+    data.entries.map((entry) => entry.currency).concat(data.plans.map((plan) => plan.currency)),
+    (value) => value.trim().toUpperCase(),
+  ), [data])
   const platforms = useMemo(() => [...new Set(data.entries.map((entry) => entry.platform).concat(data.plans.map((plan) => plan.platform).filter(Boolean)))].sort(), [data])
   const visibleGames = useMemo(() => data.games.filter((game) => {
     const entries = data.entries.filter((entry) => entry.gameId === game.id)
@@ -62,7 +68,7 @@ export function CollectionPage() {
 
       <section className="toolbar panel">
         <label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('collection.searchPlaceholder')} /></label>
-        <label className="select-field"><span>{t('collection.platform')}</span><select value={platform} onChange={(event) => setPlatform(event.target.value)}><option value="all">{t('collection.all')}</option>{platforms.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+         <label className="select-field"><span>{t('collection.platform')}</span><select value={platform} onChange={(event) => setPlatform(event.target.value)}><option value="all">{t('collection.all')}</option>{platforms.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label className="select-field"><span>{t('collection.completion')}</span><select value={completionFilter} onChange={(event) => setCompletionFilter(event.target.value as CompletionFilter)}><option value="all">{t('collection.all')}</option><option value="started">{t('collection.started')}</option><option value="finished">{t('collection.finished')}</option><option value="not-started">{t('collection.notStarted')}</option></select></label>
         <label className="select-field"><span>{t('collection.view')}</span><select value={view} onChange={(event) => setView(event.target.value as 'grouped' | 'flat')}><option value="grouped">{t('collection.grouped')}</option><option value="flat">{t('collection.flat')}</option></select></label>
         <div className="filter-tabs" aria-label={t('collection.filter')}>{[['all', 'collection.all'], ['owned', 'collection.owned'], ['planned', 'collection.plans'], ['sealed', 'collection.sealed'], ['used', 'collection.used']].map(([value, label]) => <button key={value} className={filter === value ? 'active' : ''} type="button" onClick={() => setFilter(value as typeof filter)}><Filter size={13} />{t(label as Parameters<typeof t>[0])}</button>)}</div>
@@ -72,9 +78,9 @@ export function CollectionPage() {
       {visibleGames.length === 0 ? <EmptyState title={t('collection.noMatches')} description={data.games.length === 0 ? t('collection.emptyDescription') : t('collection.filteredDescription')} action={<button className="button button-primary" type="button" onClick={() => setModal({ kind: 'game' })}><Plus size={16} /> {t('common.addGame')}</button>} /> : view === 'grouped' ? <div className="game-list">{visibleGames.map((game) => <GameGroup key={game.id} game={game} expanded={expanded.has(game.id)} onToggle={() => setExpanded((current) => { const next = new Set(current); if (next.has(game.id)) next.delete(game.id); else next.add(game.id); return next })} onEdit={() => setModal({ kind: 'game', game })} onDelete={() => confirmDeleteGame(game)} onAddEntry={() => { openGame(game); setModal({ kind: 'entry', gameId: game.id }) }} onEditEntry={(entry) => setModal({ kind: 'entry', gameId: game.id, entry })} onDeleteEntry={deleteEntry} onAddPlan={() => { openGame(game); setModal({ kind: 'plan', gameId: game.id }) }} onEditPlan={(plan) => setModal({ kind: 'plan', gameId: game.id, plan })} onDeletePlan={deletePlan} onConvertPlan={(plan) => setModal({ kind: 'convert', plan })} />)}</div> : <FlatEntries games={visibleGames} entries={data.entries} onEdit={(entry) => setModal({ kind: 'entry', gameId: entry.gameId, entry })} onDelete={deleteEntry} />}
 
       {modal?.kind === 'game' && <Modal title={modal.game ? t('collection.editGame') : t('collection.addGame')} onClose={() => setModal(null)}><GameForm initial={modal.game} submitLabel={modal.game ? t('common.saveChanges') : t('common.addGame')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.game) updateGame(modal.game.id, values); else { const created = addGame(values.title); if (created) updateGame(created.id, { aliases: values.aliases, notes: values.notes }) } setModal(null) }} /></Modal>}
-      {modal?.kind === 'entry' && <Modal title={modal.entry ? t('collection.editCopy') : t('collection.addCopy')} wide onClose={() => setModal(null)}><EntryForm initial={modal.entry} submitLabel={modal.entry ? t('common.saveChanges') : t('common.addEntry')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.entry) updateEntry(modal.entry.id, values); else addEntry(modal.gameId, values); setModal(null) }} /></Modal>}
-      {modal?.kind === 'plan' && <Modal title={modal.plan ? t('collection.editPlan') : t('collection.addPlan')} wide onClose={() => setModal(null)}><PlanForm initial={modal.plan} submitLabel={modal.plan ? t('common.saveChanges') : t('common.addPlan')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.plan) updatePlan(modal.plan.id, values); else addPlan(modal.gameId, values); setModal(null) }} /></Modal>}
-      {modal?.kind === 'convert' && <Modal title={t('collection.convertPlan')} wide onClose={() => setModal(null)}><EntryForm initial={{ platform: modal.plan.platform, version: modal.plan.version, notes: modal.plan.notes, condition: 'unknown', completion: 'not-started' }} submitLabel={t('collection.addToCollection')} onCancel={() => setModal(null)} onSubmit={(values) => { convertPlan(modal.plan.id, values); setModal(null) }} /></Modal>}
+      {modal?.kind === 'entry' && <Modal title={modal.entry ? t('collection.editCopy') : t('collection.addCopy')} wide onClose={() => setModal(null)}><EntryForm initial={modal.entry} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={modal.entry ? t('common.saveChanges') : t('common.addEntry')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.entry) updateEntry(modal.entry.id, values); else addEntry(modal.gameId, values); setModal(null) }} /></Modal>}
+      {modal?.kind === 'plan' && <Modal title={modal.plan ? t('collection.editPlan') : t('collection.addPlan')} wide onClose={() => setModal(null)}><PlanForm initial={modal.plan} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={modal.plan ? t('common.saveChanges') : t('common.addPlan')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.plan) updatePlan(modal.plan.id, values); else addPlan(modal.gameId, values); setModal(null) }} /></Modal>}
+      {modal?.kind === 'convert' && <Modal title={t('collection.convertPlan')} wide onClose={() => setModal(null)}><EntryForm initial={{ platform: modal.plan.platform, version: modal.plan.version, notes: modal.plan.notes, condition: 'unknown', completion: 'not-started' }} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={t('collection.addToCollection')} onCancel={() => setModal(null)} onSubmit={(values) => { convertPlan(modal.plan.id, values); setModal(null) }} /></Modal>}
     </div>
   )
 }
