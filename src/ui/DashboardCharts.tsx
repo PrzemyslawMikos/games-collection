@@ -1,19 +1,31 @@
 import type {
+  CompletionTotal,
+  ConditionTotal,
+  OwnershipTotal,
   PlatformDistribution,
   PlatformSpending,
   PurchaseTimelinePoint,
-  StatusTotal,
 } from '../domain/stats'
+import type { TranslationKey } from '../i18n'
 import { useTranslation } from '../i18n'
 import { formatMoney, formatTimelinePeriod } from './format'
 
 const chartColors = ['var(--coral)', 'var(--blue)', 'var(--green)', 'var(--gold)', '#9c7ac7', '#6aa8a1', '#d4866e', '#718096', '#b08b50']
 
-const statusLabelKeys: Record<StatusTotal['status'], 'charts.planned' | 'charts.completed' | 'charts.sealed' | 'charts.inProgress'> = {
+const ownershipLabelKeys: Record<OwnershipTotal['status'], 'charts.bought' | 'charts.planned'> = {
+  bought: 'charts.bought',
   planned: 'charts.planned',
+}
+
+const completionLabelKeys: Record<CompletionTotal['status'], 'charts.completed' | 'charts.inProgress' | 'charts.notStarted'> = {
   completed: 'charts.completed',
+  'not-completed': 'charts.inProgress',
+  'not-started': 'charts.notStarted',
+}
+
+const conditionLabelKeys: Record<ConditionTotal['status'], 'charts.used' | 'charts.sealed'> = {
+  used: 'charts.used',
   sealed: 'charts.sealed',
-  'in-progress': 'charts.inProgress',
 }
 
 function ChartEmpty({ children }: { children: string }) {
@@ -87,21 +99,33 @@ export function PlatformDistributionChart({ data }: { data: PlatformDistribution
   )
 }
 
-export function StatusDistributionChart({ data }: { data: StatusTotal[] }) {
-  const { t } = useTranslation()
+function DistributionChart<T extends string>({
+  data,
+  labelFor,
+  emptyMessage,
+  ariaLabel,
+  dataTitle,
+}: {
+  data: Array<{ status: T; count: number }>
+  labelFor: (status: T) => string
+  emptyMessage: string
+  ariaLabel: string
+  dataTitle: string
+}) {
   const total = data.reduce((sum, item) => sum + item.count, 0)
-  if (total === 0) return <ChartEmpty>{t('charts.statusEmpty')}</ChartEmpty>
+  if (total === 0) return <ChartEmpty>{emptyMessage}</ChartEmpty>
 
   return (
     <div className="chart-content">
-      <div className="status-bar" role="img" aria-label={t('charts.status')}>
+      <div className="status-bar" role="img" aria-label={ariaLabel}>
         {data.map((item, index) => item.count > 0 && (
           <div
             className="status-segment"
             key={item.status}
-            style={{ width: `${(item.count / total) * 100}%`, background: chartColors[index] }}
+            style={{ width: `${(item.count / total) * 100}%`, background: chartColors[index % chartColors.length] }}
             tabIndex={0}
-            title={`${t(statusLabelKeys[item.status])}: ${item.count}`}
+            aria-label={`${labelFor(item.status)}: ${item.count}`}
+            title={`${labelFor(item.status)}: ${item.count}`}
           >
             <span>{item.count}</span>
           </div>
@@ -110,15 +134,38 @@ export function StatusDistributionChart({ data }: { data: StatusTotal[] }) {
       <div className="chart-legend chart-legend-grid">
         {data.map((item, index) => (
           <div className="chart-legend-row" key={item.status}>
-            <span className="chart-swatch" style={{ background: chartColors[index] }} />
-            <span>{t(statusLabelKeys[item.status])}</span>
+            <span className="chart-swatch" style={{ background: chartColors[index % chartColors.length] }} />
+            <span>{labelFor(item.status)}</span>
             <strong>{item.count}</strong>
           </div>
         ))}
       </div>
-      <ChartDataDetails title={t('charts.chartData')} items={data.map((item) => ({ label: t(statusLabelKeys[item.status]), value: `${item.count} (${Math.round((item.count / total) * 100)}%)` }))} />
+      <ChartDataDetails title={dataTitle} items={data.map((item) => ({ label: labelFor(item.status), value: `${item.count} (${Math.round((item.count / total) * 100)}%)` }))} />
     </div>
   )
+}
+
+function useDistributionLabel<T extends string>(keys: Record<T, TranslationKey>) {
+  const { t } = useTranslation()
+  return (status: T): string => t(keys[status])
+}
+
+export function OwnershipDistributionChart({ data }: { data: OwnershipTotal[] }) {
+  const { t } = useTranslation()
+  const labelFor = useDistributionLabel(ownershipLabelKeys)
+  return <DistributionChart data={data} labelFor={labelFor} emptyMessage={t('charts.ownershipEmpty')} ariaLabel={t('charts.ownership')} dataTitle={t('charts.chartData')} />
+}
+
+export function CompletionDistributionChart({ data }: { data: CompletionTotal[] }) {
+  const { t } = useTranslation()
+  const labelFor = useDistributionLabel(completionLabelKeys)
+  return <DistributionChart data={data} labelFor={labelFor} emptyMessage={t('charts.completionEmpty')} ariaLabel={t('charts.completion')} dataTitle={t('charts.chartData')} />
+}
+
+export function ConditionDistributionChart({ data }: { data: ConditionTotal[] }) {
+  const { t } = useTranslation()
+  const labelFor = useDistributionLabel(conditionLabelKeys)
+  return <DistributionChart data={data} labelFor={labelFor} emptyMessage={t('charts.conditionEmpty')} ariaLabel={t('charts.condition')} dataTitle={t('charts.chartData')} />
 }
 
 export function SpendingChart({ data }: { data: PlatformSpending[] }) {

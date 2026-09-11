@@ -17,13 +17,16 @@ type ModalState =
   | { kind: 'convert'; plan: GamePlan }
   | null
 
+type CompletionFilter = 'all' | 'started' | 'finished' | 'not-started'
+
 export function CollectionPage() {
   const { data, addGame, updateGame, deleteGame, addEntry, updateEntry, deleteEntry, addPlan, updatePlan, deletePlan, convertPlan } = useCollection()
   const { t, plural } = useTranslation()
   const [query, setQuery] = useState('')
   const [platform, setPlatform] = useState('all')
   const [view, setView] = useState<'grouped' | 'flat'>('grouped')
-  const [filter, setFilter] = useState<'all' | 'owned' | 'planned' | 'completed' | 'sealed' | 'used'>('all')
+  const [filter, setFilter] = useState<'all' | 'owned' | 'planned' | 'sealed' | 'used'>('all')
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [modal, setModal] = useState<ModalState>(null)
 
@@ -36,11 +39,14 @@ export function CollectionPage() {
     const filterMatch = filter === 'all'
       || (filter === 'owned' && entries.length > 0)
       || (filter === 'planned' && plans.length > 0)
-      || (filter === 'completed' && entries.some((entry) => entry.completion === 'completed'))
       || (filter === 'sealed' && entries.some((entry) => entry.condition === 'sealed'))
       || (filter === 'used' && entries.some((entry) => entry.condition === 'used'))
-    return titleMatch && platformMatch && filterMatch
-  }).sort((a, b) => a.title.localeCompare(b.title)), [data, filter, platform, query])
+    const completionMatch = completionFilter === 'all'
+      || (completionFilter === 'started' && entries.some((entry) => entry.completion === 'not-completed'))
+      || (completionFilter === 'finished' && entries.some((entry) => entry.completion === 'completed'))
+      || (completionFilter === 'not-started' && entries.some((entry) => entry.completion === 'not-started'))
+    return titleMatch && platformMatch && filterMatch && completionMatch
+  }).sort((a, b) => a.title.localeCompare(b.title)), [completionFilter, data, filter, platform, query])
 
   const openGame = (game: Game): void => setExpanded((current) => new Set(current).add(game.id))
   const confirmDeleteGame = (game: Game): void => {
@@ -57,8 +63,9 @@ export function CollectionPage() {
       <section className="toolbar panel">
         <label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('collection.searchPlaceholder')} /></label>
         <label className="select-field"><span>{t('collection.platform')}</span><select value={platform} onChange={(event) => setPlatform(event.target.value)}><option value="all">{t('collection.all')}</option>{platforms.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <label className="select-field"><span>{t('collection.completion')}</span><select value={completionFilter} onChange={(event) => setCompletionFilter(event.target.value as CompletionFilter)}><option value="all">{t('collection.all')}</option><option value="started">{t('collection.started')}</option><option value="finished">{t('collection.finished')}</option><option value="not-started">{t('collection.notStarted')}</option></select></label>
         <label className="select-field"><span>{t('collection.view')}</span><select value={view} onChange={(event) => setView(event.target.value as 'grouped' | 'flat')}><option value="grouped">{t('collection.grouped')}</option><option value="flat">{t('collection.flat')}</option></select></label>
-        <div className="filter-tabs" aria-label={t('collection.filter')}>{[['all', 'collection.all'], ['owned', 'collection.owned'], ['planned', 'collection.plans'], ['completed', 'collection.completed'], ['sealed', 'collection.sealed'], ['used', 'collection.used']].map(([value, label]) => <button key={value} className={filter === value ? 'active' : ''} type="button" onClick={() => setFilter(value as typeof filter)}><Filter size={13} />{t(label as Parameters<typeof t>[0])}</button>)}</div>
+        <div className="filter-tabs" aria-label={t('collection.filter')}>{[['all', 'collection.all'], ['owned', 'collection.owned'], ['planned', 'collection.plans'], ['sealed', 'collection.sealed'], ['used', 'collection.used']].map(([value, label]) => <button key={value} className={filter === value ? 'active' : ''} type="button" onClick={() => setFilter(value as typeof filter)}><Filter size={13} />{t(label as Parameters<typeof t>[0])}</button>)}</div>
       </section>
 
       {visibleGames.length === 0 ? <EmptyState title={t('collection.noMatches')} description={data.games.length === 0 ? t('collection.emptyDescription') : t('collection.filteredDescription')} action={<button className="button button-primary" type="button" onClick={() => setModal({ kind: 'game' })}><Plus size={16} /> {t('common.addGame')}</button>} /> : view === 'grouped' ? <div className="game-list">{visibleGames.map((game) => <GameGroup key={game.id} game={game} expanded={expanded.has(game.id)} onToggle={() => setExpanded((current) => { const next = new Set(current); if (next.has(game.id)) next.delete(game.id); else next.add(game.id); return next })} onEdit={() => setModal({ kind: 'game', game })} onDelete={() => confirmDeleteGame(game)} onAddEntry={() => { openGame(game); setModal({ kind: 'entry', gameId: game.id }) }} onEditEntry={(entry) => setModal({ kind: 'entry', gameId: game.id, entry })} onDeleteEntry={deleteEntry} onAddPlan={() => { openGame(game); setModal({ kind: 'plan', gameId: game.id }) }} onEditPlan={(plan) => setModal({ kind: 'plan', gameId: game.id, plan })} onDeletePlan={deletePlan} onConvertPlan={(plan) => setModal({ kind: 'convert', plan })} />)}</div> : <FlatEntries games={visibleGames} entries={data.entries} onEdit={(entry) => setModal({ kind: 'entry', gameId: entry.gameId, entry })} onDelete={deleteEntry} />}

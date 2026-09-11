@@ -1,4 +1,4 @@
-import type { CollectionData, GameEntry, GamePlan } from './model'
+import type { CollectionData, CompletionStatus, Condition, GameEntry, GamePlan } from './model'
 
 export interface CurrencyTotal {
   currency: string
@@ -22,10 +22,20 @@ export interface PlatformSpending {
   platforms: Array<{ platform: string; amount: number }>
 }
 
-export type CollectionStatus = 'planned' | 'completed' | 'sealed' | 'in-progress'
+export type OwnershipStatus = 'bought' | 'planned'
 
-export interface StatusTotal {
-  status: CollectionStatus
+export interface OwnershipTotal {
+  status: OwnershipStatus
+  count: number
+}
+
+export interface CompletionTotal {
+  status: CompletionStatus
+  count: number
+}
+
+export interface ConditionTotal {
+  status: Exclude<Condition, 'unknown'>
   count: number
 }
 
@@ -49,7 +59,9 @@ export interface CollectionStats {
   platformTotals: PlatformTotal[]
   platformDistribution: PlatformDistribution[]
   platformSpending: PlatformSpending[]
-  statusTotals: StatusTotal[]
+  ownershipTotals: OwnershipTotal[]
+  completionTotals: CompletionTotal[]
+  conditionTotals: ConditionTotal[]
   purchaseTimeline: PurchaseTimelinePoint[]
   completionProgress: number
 }
@@ -69,26 +81,36 @@ const sumByCurrency = (values: Array<{ amount: number | null; currency: string }
 const entriesForGame = (entries: GameEntry[], gameId: string): GameEntry[] =>
   entries.filter((entry) => entry.gameId === gameId)
 
-const statusOrder: CollectionStatus[] = ['planned', 'completed', 'sealed', 'in-progress']
+const ownershipOrder: OwnershipStatus[] = ['bought', 'planned']
+const completionOrder: CompletionStatus[] = ['completed', 'not-completed', 'not-started']
+const conditionOrder: ConditionTotal['status'][] = ['used', 'sealed']
 
-const createStatusTotals = (data: CollectionData, ownedGameIds: Set<string>): StatusTotal[] => {
-  const counts = new Map<CollectionStatus, number>(statusOrder.map((status) => [status, 0]))
+const createOwnershipTotals = (data: CollectionData, ownedGameIds: Set<string>): OwnershipTotal[] => {
+  const counts = new Map<OwnershipStatus, number>(ownershipOrder.map((status) => [status, 0]))
   const plannedGames = new Set(data.plans.map((plan) => plan.gameId))
 
-  for (const gameId of plannedGames) {
-    if (!ownedGameIds.has(gameId)) counts.set('planned', (counts.get('planned') ?? 0) + 1)
+  counts.set('bought', data.entries.length)
+  counts.set('planned', [...plannedGames].filter((gameId) => !ownedGameIds.has(gameId)).length)
+
+  return ownershipOrder.map((status) => ({ status, count: counts.get(status) ?? 0 }))
+}
+
+const createCompletionTotals = (entries: GameEntry[]): CompletionTotal[] => {
+  const counts = new Map<CompletionStatus, number>(completionOrder.map((status) => [status, 0]))
+
+  for (const entry of entries) counts.set(entry.completion, (counts.get(entry.completion) ?? 0) + 1)
+
+  return completionOrder.map((status) => ({ status, count: counts.get(status) ?? 0 }))
+}
+
+const createConditionTotals = (entries: GameEntry[]): ConditionTotal[] => {
+  const counts = new Map<ConditionTotal['status'], number>(conditionOrder.map((status) => [status, 0]))
+
+  for (const entry of entries) {
+    if (entry.condition !== 'unknown') counts.set(entry.condition, (counts.get(entry.condition) ?? 0) + 1)
   }
 
-  for (const entry of data.entries) {
-    const status: CollectionStatus = entry.completion === 'completed'
-      ? 'completed'
-      : entry.condition === 'sealed'
-        ? 'sealed'
-        : 'in-progress'
-    counts.set(status, (counts.get(status) ?? 0) + 1)
-  }
-
-  return statusOrder.map((status) => ({ status, count: counts.get(status) ?? 0 }))
+  return conditionOrder.map((status) => ({ status, count: counts.get(status) ?? 0 }))
 }
 
 const parsePurchaseDate = (value: string): { year: number; month: number; day: number } | null => {
@@ -212,7 +234,9 @@ export const calculateStats = (data: CollectionData): CollectionStats => {
     platformTotals,
     platformDistribution,
     platformSpending,
-    statusTotals: createStatusTotals(data, ownedGameIds),
+    ownershipTotals: createOwnershipTotals(data, ownedGameIds),
+    completionTotals: createCompletionTotals(data.entries),
+    conditionTotals: createConditionTotals(data.entries),
     purchaseTimeline: createPurchaseTimeline(data.entries),
     completionProgress: ownedEntries === 0 ? 0 : Math.round((completedEntries / ownedEntries) * 100),
   }

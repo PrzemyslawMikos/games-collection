@@ -55,11 +55,18 @@ describe('dashboard chart statistics', () => {
       { currency: 'EUR', platforms: [{ platform: 'PS5', amount: 50 }] },
       { currency: 'PLN', platforms: [{ platform: 'PS5', amount: 100 }] },
     ])
-    expect(stats.statusTotals).toEqual([
+    expect(stats.ownershipTotals).toEqual([
+      { status: 'bought', count: 3 },
       { status: 'planned', count: 1 },
+    ])
+    expect(stats.completionTotals).toEqual([
       { status: 'completed', count: 1 },
-      { status: 'sealed', count: 1 },
-      { status: 'in-progress', count: 1 },
+      { status: 'not-completed', count: 0 },
+      { status: 'not-started', count: 2 },
+    ])
+    expect(stats.conditionTotals).toEqual([
+      { status: 'used', count: 1 },
+      { status: 'sealed', count: 2 },
     ])
     expect(stats.purchaseTimeline).toEqual([
       { period: '2024-01', purchases: 1 },
@@ -85,17 +92,57 @@ describe('dashboard chart statistics', () => {
     ])
   })
 
-  it('returns empty timeline and zeroed status categories for empty data', () => {
+  it('counts each chart dimension independently', () => {
+    const data = createEmptyCollection()
+    const ownedGame = createGame('Posiadana gra')
+    const plannedGame = createGame('Planowana gra')
+    data.games.push(ownedGame, plannedGame)
+    data.entries.push(
+      createEntry(ownedGame.id, { completion: 'completed', condition: 'sealed' }),
+      createEntry(ownedGame.id, { completion: 'not-completed', condition: 'used' }),
+      createEntry(plannedGame.id, { completion: 'not-started', condition: 'unknown' }),
+    )
+    data.plans.push(
+      createPlan(plannedGame.id),
+      createPlan(plannedGame.id, { status: 'ordered' }),
+      createPlan(ownedGame.id),
+    )
+
+    const stats = calculateStats(data)
+
+    expect(stats.ownershipTotals).toEqual([
+      { status: 'bought', count: 3 },
+      { status: 'planned', count: 0 },
+    ])
+    expect(stats.completionTotals).toEqual([
+      { status: 'completed', count: 1 },
+      { status: 'not-completed', count: 1 },
+      { status: 'not-started', count: 1 },
+    ])
+    expect(stats.conditionTotals).toEqual([
+      { status: 'used', count: 1 },
+      { status: 'sealed', count: 1 },
+    ])
+  })
+
+  it('returns empty timeline and zeroed chart categories for empty data', () => {
     const stats = calculateStats(createEmptyCollection())
 
     expect(stats.purchaseTimeline).toEqual([])
     expect(stats.platformDistribution).toEqual([])
     expect(stats.platformSpending).toEqual([])
-    expect(stats.statusTotals).toEqual([
+    expect(stats.ownershipTotals).toEqual([
+      { status: 'bought', count: 0 },
       { status: 'planned', count: 0 },
+    ])
+    expect(stats.completionTotals).toEqual([
       { status: 'completed', count: 0 },
+      { status: 'not-completed', count: 0 },
+      { status: 'not-started', count: 0 },
+    ])
+    expect(stats.conditionTotals).toEqual([
+      { status: 'used', count: 0 },
       { status: 'sealed', count: 0 },
-      { status: 'in-progress', count: 0 },
     ])
   })
 

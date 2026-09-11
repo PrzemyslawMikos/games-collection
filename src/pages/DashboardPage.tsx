@@ -2,7 +2,14 @@ import { ArrowRight, CircleCheck, Coins, Package, ShoppingBag, Sparkles } from '
 import { Link } from 'react-router-dom'
 import { useCollection } from '../app/useCollection'
 import { useTranslation } from '../i18n'
-import { PlatformDistributionChart, PurchaseTimelineChart, SpendingChart, StatusDistributionChart } from '../ui/DashboardCharts'
+import {
+  CompletionDistributionChart,
+  ConditionDistributionChart,
+  OwnershipDistributionChart,
+  PlatformDistributionChart,
+  PurchaseTimelineChart,
+  SpendingChart,
+} from '../ui/DashboardCharts'
 import { formatMoney } from '../ui/format'
 
 export function DashboardPage() {
@@ -59,8 +66,16 @@ export function DashboardPage() {
 
       <section className="chart-grid">
         <div className="panel chart-panel">
-          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.statusEyebrow')}</p><h2>{t('dashboard.collectionStatus')}</h2></div></div>
-          <StatusDistributionChart data={stats.statusTotals} />
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.ownershipEyebrow')}</p><h2>{t('dashboard.ownershipStatus')}</h2></div></div>
+          <OwnershipDistributionChart data={stats.ownershipTotals} />
+        </div>
+        <div className="panel chart-panel">
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.completionEyebrow')}</p><h2>{t('dashboard.completionStatus')}</h2></div></div>
+          <CompletionDistributionChart data={stats.completionTotals} />
+        </div>
+        <div className="panel chart-panel">
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.conditionEyebrow')}</p><h2>{t('dashboard.conditionStatus')}</h2></div></div>
+          <ConditionDistributionChart data={stats.conditionTotals} />
         </div>
         <div className="panel chart-panel">
           <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.spendingEyebrow')}</p><h2>{t('dashboard.byPlatform')}</h2></div></div>
