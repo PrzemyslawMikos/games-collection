@@ -1,4 +1,5 @@
 import { collectionSchema, type CollectionData } from '../domain/model'
+import { LocalizedError } from '../i18n/errors'
 
 const GITHUB_API = 'https://api.github.com'
 const AUTH_KEY = 'games-collection-github-auth'
@@ -38,9 +39,9 @@ export interface RemoteCollection {
   sha: string
 }
 
-export class RemoteConflictError extends Error {
+export class RemoteConflictError extends LocalizedError {
   constructor() {
-    super('Dane na GitHubie zmieniły się od ostatniej synchronizacji.')
+    super('errors.syncConflict')
     this.name = 'RemoteConflictError'
   }
 }
@@ -76,7 +77,7 @@ export const refreshGitHubAuth = async (auth: GitHubAuth): Promise<GitHubAuth> =
     }),
   })
   const result = (await response.json()) as AccessTokenResponse
-  if (!response.ok || !result.access_token) throw new Error(result.error_description ?? 'Sesja GitHub wygasła. Zaloguj się ponownie.')
+  if (!response.ok || !result.access_token) throw new LocalizedError('errors.githubSessionExpired')
   const refreshed: GitHubAuth = {
     accessToken: result.access_token,
     refreshToken: result.refresh_token ?? auth.refreshToken,
@@ -89,13 +90,13 @@ export const refreshGitHubAuth = async (auth: GitHubAuth): Promise<GitHubAuth> =
 
 const clientId = (): string => {
   const value = import.meta.env.VITE_GITHUB_APP_CLIENT_ID
-  if (!value) throw new Error('Brak VITE_GITHUB_APP_CLIENT_ID w konfiguracji aplikacji.')
+  if (!value) throw new LocalizedError('errors.missingClientId')
   return value
 }
 
 const authProxyUrl = (path: string): string => {
   const base = import.meta.env.DEV ? '/github-auth' : import.meta.env.VITE_AUTH_PROXY_URL
-  if (!base) throw new Error('Brak VITE_AUTH_PROXY_URL. Skonfiguruj proxy autoryzacji GitHub dla wdrożonej aplikacji.')
+  if (!base) throw new LocalizedError('errors.missingProxy')
   return `${base.replace(/\/$/, '')}${path}`
 }
 
@@ -112,7 +113,7 @@ export const beginDeviceLogin = async (): Promise<DeviceCodeResponse> => {
     body: new URLSearchParams({ client_id: clientId() }),
   })
 
-  if (!response.ok) throw new Error('Nie udało się rozpocząć logowania GitHub.')
+  if (!response.ok) throw new LocalizedError('errors.loginFailed')
   return (await response.json()) as DeviceCodeResponse
 }
 
@@ -152,10 +153,10 @@ export const pollDeviceLogin = async (
       interval += 5000
       continue
     }
-    throw new Error(result.error_description ?? 'Logowanie GitHub nie powiodło się.')
+    throw new LocalizedError('errors.loginFailed')
   }
 
-  throw new Error('Kod logowania GitHub wygasł.')
+  throw new LocalizedError('errors.loginExpired')
 }
 
 export const getGitHubUsername = async (auth: GitHubAuth): Promise<string | undefined> => {
@@ -199,11 +200,15 @@ export class GitHubCollectionRepository {
     if (response.status === 404) return null
     if (!response.ok) throw await this.errorFrom(response)
     const file = (await response.json()) as GitHubFileResponse
-    if (!file.content || file.encoding !== 'base64') throw new Error('Nieprawidłowa odpowiedź GitHub Contents API.')
+    if (!file.content || file.encoding !== 'base64') throw new LocalizedError('errors.githubResponse')
 
-    const json = decodeBase64(file.content)
-    const data = collectionSchema.parse(JSON.parse(json))
-    return { data, sha: file.sha }
+    try {
+      const json = decodeBase64(file.content)
+      const data = collectionSchema.parse(JSON.parse(json))
+      return { data, sha: file.sha }
+    } catch {
+      throw new LocalizedError('errors.githubResponse')
+    }
   }
 
   async save(auth: GitHubAuth, data: CollectionData, expectedSha: string | null): Promise<string> {
@@ -228,12 +233,12 @@ export class GitHubCollectionRepository {
     if (response.status === 409) throw new RemoteConflictError()
     if (!response.ok) throw await this.errorFrom(response)
     const result = (await response.json()) as { content?: { sha?: string } }
-    if (!result.content?.sha) throw new Error('GitHub nie zwrócił identyfikatora zapisanego pliku.')
+    if (!result.content?.sha) throw new LocalizedError('errors.fileNotSaved')
     return result.content.sha
   }
 
   private assertConfigured(): void {
-    if (!this.configured) throw new Error('Nie skonfigurowano prywatnego repozytorium danych.')
+    if (!this.configured) throw new LocalizedError('errors.repositoryNotConfigured')
   }
 
   private async assertBranch(auth: GitHubAuth): Promise<void> {
@@ -243,14 +248,14 @@ export class GitHubCollectionRepository {
     )
     if (response.ok) return
     if (response.status === 404) {
-      throw new Error(`Nie znaleziono repozytorium lub gałęzi ${this.reference}. Utwórz gałąź data i sprawdź instalację GitHub App.`)
+      throw new LocalizedError('errors.branchMissing', { reference: this.reference })
     }
     throw await this.errorFrom(response)
   }
 
   private async errorFrom(response: Response): Promise<Error> {
-    const body = await response.text()
-    return new Error(`GitHub API (${response.status}): ${body || response.statusText}`)
+    await response.text()
+    return new LocalizedError('errors.githubApi', { status: response.status })
   }
 }
 

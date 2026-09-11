@@ -1,62 +1,81 @@
 import { ArrowRight, CircleCheck, Coins, Package, ShoppingBag, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCollection } from '../app/useCollection'
+import { useTranslation } from '../i18n'
+import { PlatformDistributionChart, PurchaseTimelineChart, SpendingChart, StatusDistributionChart } from '../ui/DashboardCharts'
 import { formatMoney } from '../ui/format'
 
 export function DashboardPage() {
   const { data, stats } = useCollection()
+  const { t, plural, locale } = useTranslation()
   const latestEntries = [...data.entries]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 5)
 
-  const gameName = (gameId: string): string => data.games.find((game) => game.id === gameId)?.title ?? 'Nieznana gra'
-  const spend = stats.totalSpend.map((item) => formatMoney(item.amount, item.currency)).join(' + ') || '0,00 zł'
+  const gameName = (gameId: string): string => data.games.find((game) => game.id === gameId)?.title ?? t('dashboard.unknownGame')
+  const spend = stats.totalSpend.map((item) => formatMoney(item.amount, item.currency, locale)).join(' + ') || formatMoney(0, 'PLN', locale)
 
   return (
     <div className="page-stack">
       <section className="hero-row">
         <div>
-          <p className="eyebrow">PRZEGLĄD KOLEKCJI</p>
-          <h1>Twoja kolekcja,<br /><em>w jednym miejscu.</em></h1>
-          <p className="hero-copy">Przeglądaj fizyczne wydania, pilnuj planów zakupowych i sprawdzaj postęp bez arkusza kalkulacyjnego.</p>
+          <p className="eyebrow">{t('dashboard.eyebrow')}</p>
+          <h1>{t('dashboard.titleLine1')}<br /><em>{t('dashboard.titleLine2')}</em></h1>
+          <p className="hero-copy">{t('dashboard.description')}</p>
         </div>
         <div className="hero-note">
           <Sparkles size={18} />
-          <span>{stats.plannedGames === 0 ? 'Nie ma jeszcze planów zakupowych.' : `${stats.plannedGames} gier czeka na zakup.`}</span>
+          <span>{stats.plannedGames === 0 ? t('dashboard.noPlans') : plural('dashboard.plansWaiting', stats.plannedGames)}</span>
         </div>
       </section>
 
       <section className="stat-grid">
-        <StatCard icon={<Package size={20} />} label="Gry w katalogu" value={stats.totalGames} detail={`${stats.ownedGames} posiadanych`} accent="coral" />
-        <StatCard icon={<ShoppingBag size={20} />} label="Egzemplarze" value={stats.totalEntries} detail={`${stats.sealedEntries} zafoliowanych`} accent="blue" />
-        <StatCard icon={<CircleCheck size={20} />} label="Ukończone" value={stats.completedGames} detail={`${stats.completionProgress}% egzemplarzy`} accent="green" />
-        <StatCard icon={<Coins size={20} />} label="Wydane" value={spend} detail={`${stats.plannedBudget.length ? 'plus budżet planów' : 'brak planów cenowych'}`} accent="gold" />
+        <StatCard icon={<Package size={20} />} label={t('dashboard.catalogGames')} value={stats.totalGames} detail={plural('dashboard.ownedCount', stats.ownedGames)} accent="coral" />
+        <StatCard icon={<ShoppingBag size={20} />} label={t('dashboard.copies')} value={stats.totalEntries} detail={plural('dashboard.sealedCount', stats.sealedEntries)} accent="blue" />
+        <StatCard icon={<CircleCheck size={20} />} label={t('dashboard.completed')} value={stats.completedGames} detail={t('dashboard.completedCopies', { count: stats.completionProgress })} accent="green" />
+        <StatCard icon={<Coins size={20} />} label={t('dashboard.spent')} value={spend} detail={t(stats.plannedBudget.length ? 'dashboard.plusPlannedBudget' : 'dashboard.noPlannedPrices')} accent="gold" />
       </section>
 
       <section className="dashboard-grid">
         <div className="panel progress-panel">
-          <div className="panel-heading"><div><p className="eyebrow">POSTĘP KOLEKCJI</p><h2>Każdy tytuł ma swoją historię</h2></div><Link className="text-link" to="/collection">Otwórz kolekcję <ArrowRight size={15} /></Link></div>
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.progressEyebrow')}</p><h2>{t('dashboard.progressTitle')}</h2></div><Link className="text-link" to="/collection">{t('dashboard.openCollection')} <ArrowRight size={15} /></Link></div>
           <div className="progress-visual">
             <div className="progress-ring" style={{ '--progress': `${stats.ownedGames === 0 ? 0 : Math.round((stats.completedGames / stats.ownedGames) * 100)}%` } as React.CSSProperties}>
-              <strong>{stats.ownedGames === 0 ? 0 : Math.round((stats.completedGames / stats.ownedGames) * 100)}%</strong><span>ukończonych gier</span>
+              <strong>{stats.ownedGames === 0 ? 0 : Math.round((stats.completedGames / stats.ownedGames) * 100)}%</strong><span>{t('dashboard.completedGames')}</span>
             </div>
             <div className="progress-list">
-              <ProgressLine label="Posiadane gry" value={stats.ownedGames} total={Math.max(stats.totalGames, 1)} color="coral" />
-              <ProgressLine label="Ukończone gry" value={stats.completedGames} total={Math.max(stats.ownedGames, 1)} color="green" />
-              <ProgressLine label="Plany zakupowe" value={stats.plannedGames} total={Math.max(stats.totalGames, 1)} color="gold" />
+              <ProgressLine label={t('dashboard.ownedGames')} value={stats.ownedGames} total={Math.max(stats.totalGames, 1)} color="coral" />
+              <ProgressLine label={t('dashboard.completedGames')} value={stats.completedGames} total={Math.max(stats.ownedGames, 1)} color="green" />
+              <ProgressLine label={t('dashboard.plannedPurchases')} value={stats.plannedGames} total={Math.max(stats.totalGames, 1)} color="gold" />
             </div>
           </div>
         </div>
 
-        <div className="panel platform-panel">
-          <div className="panel-heading"><div><p className="eyebrow">PLATFORMY</p><h2>Rozkład kolekcji</h2></div><Link className="icon-link" to="/collection" aria-label="Zobacz kolekcję"><ArrowRight size={17} /></Link></div>
-          {stats.platformTotals.length === 0 ? <p className="muted-copy">Dodaj pierwszy egzemplarz, aby zobaczyć rozkład platform.</p> : <div className="platform-list">{stats.platformTotals.map((platform) => <div className="platform-row" key={platform.platform}><span className="platform-badge">{platform.platform.slice(0, 2)}</span><div className="platform-name"><strong>{platform.platform}</strong><span>{platform.entries} {platform.entries === 1 ? 'egzemplarz' : 'egzemplarze'}</span></div><strong>{formatMoney(platform.ownedSpend, platform.currency)}</strong></div>)}</div>}
+        <div className="panel chart-panel platform-panel">
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.platformsEyebrow')}</p><h2>{t('dashboard.collectionBreakdown')}</h2></div><Link className="icon-link" to="/collection" aria-label={t('dashboard.viewCollection')}><ArrowRight size={17} /></Link></div>
+          <PlatformDistributionChart data={stats.platformDistribution} />
         </div>
       </section>
 
+      <section className="chart-grid">
+        <div className="panel chart-panel">
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.statusEyebrow')}</p><h2>{t('dashboard.collectionStatus')}</h2></div></div>
+          <StatusDistributionChart data={stats.statusTotals} />
+        </div>
+        <div className="panel chart-panel">
+          <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.spendingEyebrow')}</p><h2>{t('dashboard.byPlatform')}</h2></div></div>
+          <SpendingChart data={stats.platformSpending} />
+        </div>
+      </section>
+
+      <section className="panel chart-panel chart-panel-wide">
+        <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.historyEyebrow')}</p><h2>{t('dashboard.purchasesOverTime')}</h2></div></div>
+        <PurchaseTimelineChart data={stats.purchaseTimeline} />
+      </section>
+
       <section className="panel recent-panel">
-        <div className="panel-heading"><div><p className="eyebrow">OSTATNIE ZMIANY</p><h2>Ostatnio aktualizowane</h2></div><Link className="text-link" to="/collection">Wszystkie wpisy <ArrowRight size={15} /></Link></div>
-        {latestEntries.length === 0 ? <p className="muted-copy">Kolekcja jest gotowa na pierwszy wpis.</p> : <div className="recent-list">{latestEntries.map((entry) => <div className="recent-row" key={entry.id}><div className="game-avatar">{gameName(entry.gameId).slice(0, 1).toUpperCase()}</div><div><strong>{gameName(entry.gameId)}</strong><span>{entry.platform} {entry.version && `· ${entry.version}`}</span></div><span className={`pill pill-${entry.completion}`}>{entry.completion === 'completed' ? 'Ukończona' : entry.completion === 'not-completed' ? 'Nie ukończona' : 'Nie rozpoczęta'}</span><strong className="recent-price">{formatMoney(entry.price, entry.currency)}</strong></div>)}</div>}
+        <div className="panel-heading"><div><p className="eyebrow">{t('dashboard.recentEyebrow')}</p><h2>{t('dashboard.recentlyUpdated')}</h2></div><Link className="text-link" to="/collection">{t('dashboard.allEntries')} <ArrowRight size={15} /></Link></div>
+        {latestEntries.length === 0 ? <p className="muted-copy">{t('dashboard.readyForFirstEntry')}</p> : <div className="recent-list">{latestEntries.map((entry) => <div className="recent-row" key={entry.id}><div className="game-avatar">{gameName(entry.gameId).slice(0, 1).toUpperCase()}</div><div><strong>{gameName(entry.gameId)}</strong><span>{entry.platform} {entry.version && `· ${entry.version}`}</span></div><span className={`pill pill-${entry.completion}`}>{entry.completion === 'completed' ? t('dashboard.completedStatus') : entry.completion === 'not-completed' ? t('dashboard.notCompletedStatus') : t('dashboard.notStartedStatus')}</span><strong className="recent-price">{formatMoney(entry.price, entry.currency, locale)}</strong></div>)}</div>}
       </section>
     </div>
   )

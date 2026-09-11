@@ -4,6 +4,6 @@ import type { CollectionContextValue } from './collectionContext'
 
 export const useCollection = (): CollectionContextValue => {
   const context = useContext(CollectionContext)
-  if (!context) throw new Error('useCollection musi być użyty wewnątrz CollectionProvider.')
+  if (!context) throw new Error('useCollection must be used within CollectionProvider.')
   return context
 }

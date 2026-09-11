@@ -1,4 +1,5 @@
 import { unzipSync } from 'fflate'
+import { LocalizedError } from '../i18n/errors'
 
 export interface WorkbookCell {
   value: string | number | null
@@ -15,7 +16,7 @@ const textFrom = (element: Element | null): string => element?.textContent?.trim
 
 const xmlDocument = (files: Record<string, Uint8Array>, path: string): Document => {
   const file = files[path]
-  if (!file) throw new Error(`Brak pliku ${path} w archiwum Excela.`)
+  if (!file) throw new LocalizedError('errors.archiveFileMissing', { path })
   return new DOMParser().parseFromString(new TextDecoder().decode(file), 'application/xml')
 }
 
@@ -57,11 +58,11 @@ export const readWorkbookSheet = async (buffer: ArrayBuffer, sheetName: string):
 
   const sheets = [...workbook.getElementsByTagName('sheet')]
   const selectedSheet = sheets.find((sheet) => sheet.getAttribute('name') === sheetName) ?? sheets[0]
-  if (!selectedSheet) throw new Error('Nie znaleziono arkusza z danymi kolekcji.')
+  if (!selectedSheet) throw new LocalizedError('errors.sheetMissing')
 
   const relationshipId = selectedSheet.getAttributeNS(RELATIONSHIP_NAMESPACE, 'id') ?? selectedSheet.getAttribute('r:id')
   const sheetPath = relationshipId ? relationshipTargets.get(relationshipId) : undefined
-  if (!sheetPath) throw new Error('Nie znaleziono pliku danych wybranego arkusza.')
+  if (!sheetPath) throw new LocalizedError('errors.sheetFileMissing')
 
   const sheet = xmlDocument(files, sheetPath)
   const sharedStringsDocument = files['xl/sharedStrings.xml'] ? xmlDocument(files, 'xl/sharedStrings.xml') : null

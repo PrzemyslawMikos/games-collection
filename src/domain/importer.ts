@@ -9,6 +9,7 @@ import {
 } from './model'
 import { normalizeTitle } from './normalize'
 import { readWorkbookSheet, type WorkbookCell } from './xlsm'
+import type { TranslationKey, TranslationValues } from '../i18n'
 
 const PLATFORM_BLOCKS = [
   { platform: 'PS5', startColumn: 1 },
@@ -25,7 +26,8 @@ export interface ImportWarning {
   row: number
   platform: string
   title: string
-  message: string
+  messageKey: TranslationKey
+  messageValues?: TranslationValues
   severity: 'info' | 'warning'
 }
 
@@ -71,8 +73,9 @@ const asCondition = (cell: WorkbookCell): Condition => {
 }
 
 const completionFor = (value: string): 'not-started' | 'not-completed' | 'completed' => {
-  if (value.toLocaleLowerCase('pl-PL') === 'tak') return 'completed'
-  if (value.toLocaleLowerCase('pl-PL') === 'nie') return 'not-completed'
+  const normalized = value.toLocaleLowerCase('pl-PL').trim()
+  if (['tak', 'yes', 'true'].includes(normalized)) return 'completed'
+  if (['nie', 'no', 'false'].includes(normalized)) return 'not-completed'
   return 'not-started'
 }
 
@@ -116,7 +119,8 @@ export const importWorkbook = async (file: File): Promise<ImportResult> => {
       const condition = asCondition(titleCell)
       const game = findOrCreateGame(collection, gameByTitle, title)
 
-      if (ownership.toLocaleLowerCase('pl-PL') === 'tak') {
+       const normalizedOwnership = ownership.toLocaleLowerCase('pl-PL').trim()
+       if (['tak', 'yes', 'true'].includes(normalizedOwnership)) {
         collection.entries.push(
           createEntry(game.id, {
             platform: block.platform,
@@ -132,12 +136,12 @@ export const importWorkbook = async (file: File): Promise<ImportResult> => {
             row: rowNumber,
             platform: block.platform,
             title,
-            message: 'Brak ceny dla posiadanej gry.',
+             messageKey: 'importWarnings.missingPrice',
             severity: 'warning',
           })
         }
       } else {
-        const status = ownership.toLocaleLowerCase('pl-PL') === 'w drodze' ? 'ordered' : 'planned'
+        const status = ['w drodze', 'ordered', 'on the way'].includes(normalizedOwnership) ? 'ordered' : 'planned'
         collection.plans.push(
           createPlan(game.id, {
             platform: block.platform,
@@ -152,18 +156,19 @@ export const importWorkbook = async (file: File): Promise<ImportResult> => {
             row: rowNumber,
             platform: block.platform,
             title,
-            message: 'Kolor sugeruje stan egzemplarza, ale wiersz nie jest oznaczony jako posiadany.',
+           messageKey: 'importWarnings.conditionOnPlan',
             severity: 'warning',
           })
         }
       }
 
-      if (ownership && ownership.toLocaleLowerCase('pl-PL') !== 'tak' && ownership.toLocaleLowerCase('pl-PL') !== 'w drodze') {
+       if (ownership && !['tak', 'yes', 'true', 'w drodze', 'ordered', 'on the way'].includes(normalizedOwnership)) {
         warnings.push({
           row: rowNumber,
           platform: block.platform,
           title,
-          message: `Nieznany status posiadania: ${ownership}. Zapisano jako plan.`,
+          messageKey: 'importWarnings.unknownOwnership',
+          messageValues: { ownership },
           severity: 'warning',
         })
       }

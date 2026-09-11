@@ -1,5 +1,29 @@
 import { expect, test } from '@playwright/test'
 
+test('renders dashboard charts and their empty states', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Rozkład kolekcji' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Stan kolekcji' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Według platformy' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Zakupy w czasie' })).toBeVisible()
+  await expect(page.getByText('Dodaj pierwszy egzemplarz, aby zobaczyć rozkład platform.')).toBeVisible()
+  await expect(page.getByText('Brak danych o statusie kolekcji.')).toBeVisible()
+  await expect(page.getByText('Brak cen zakupów do pokazania.')).toBeVisible()
+  await expect(page.getByText('Dodaj daty zakupu, aby zobaczyć oś czasu.')).toBeVisible()
+})
+
+test('switches language and keeps the preference after navigation', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Ustawienia' }).click()
+  await page.getByLabel('Język aplikacji', { exact: true }).selectOption('en')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+  await page.getByRole('link', { name: 'Overview' }).click()
+  await expect(page.getByRole('heading', { name: /Your collection/ })).toBeVisible()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /Your collection/ })).toBeVisible()
+})
+
 test('adds and displays a canonical game', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Twoja kolekcja/ })).toBeVisible()

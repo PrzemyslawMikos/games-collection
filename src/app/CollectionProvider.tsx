@@ -10,7 +10,6 @@ import {
   readGitHubAuth,
   type GitHubAuth,
   writeGitHubAuth,
-  RemoteConflictError,
 } from '../storage/github'
 import { loadLocalCollection, saveLocalCollection } from '../storage/local'
 import {
@@ -22,6 +21,8 @@ import {
   type CollectionData,
 } from '../domain/model'
 import { calculateStats } from '../domain/stats'
+import { useTranslation } from '../i18n'
+import { LocalizedError, localizedErrorMessage } from '../i18n/errors'
 import { CollectionContext, type CollectionContextValue } from './collectionContext'
 
 const repository = new GitHubCollectionRepository()
@@ -29,6 +30,7 @@ const repository = new GitHubCollectionRepository()
 const withTimestamp = (data: CollectionData): CollectionData => ({ ...data, updatedAt: now() })
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<CollectionData>(() => ({
     schemaVersion: 1,
     updatedAt: now(),
@@ -64,9 +66,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         setRemoteSha(record.remoteSha)
         setDirty(false)
       })
-      .catch(() => setError('Nie udało się odczytać lokalnego magazynu danych.'))
+      .catch(() => setError(t('errors.localLoad')))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const mutate = (change: (current: CollectionData) => CollectionData): void => {
     setData((current) => withTimestamp(change(cloneCollection(current))))
@@ -80,8 +82,8 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading) return
-    void saveLocalCollection(data, remoteSha).catch(() => setError('Nie udało się zapisać danych lokalnie.'))
-  }, [data, loading, remoteSha])
+    void saveLocalCollection(data, remoteSha).catch(() => setError(t('errors.localSave')))
+  }, [data, loading, remoteSha, t])
 
   const value = useMemo<CollectionContextValue>(
     () => ({
@@ -198,26 +200,26 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       },
       saveLocal,
       loadRemote: async () => {
-        if (!auth) throw new Error('Zaloguj się przez GitHub przed pobraniem danych.')
+        if (!auth) throw new LocalizedError('errors.loginRequiredFetch')
         setSaving(true)
         setError(null)
         try {
           const currentAuth = await refreshGitHubAuth(auth)
           if (currentAuth !== auth) setAuth(currentAuth)
           const remote = await repository.load(currentAuth)
-          if (!remote) throw new Error('Repozytorium danych nie zawiera jeszcze pliku collection.json.')
+           if (!remote) throw new LocalizedError('errors.remoteMissing')
           setData(remote.data)
           setRemoteSha(remote.sha)
           setDirty(false)
         } catch (loadError) {
-          setError(loadError instanceof Error ? loadError.message : 'Nie udało się pobrać danych.')
+           setError(localizedErrorMessage(loadError, t, 'errors.fetchFailed'))
           throw loadError
         } finally {
           setSaving(false)
         }
       },
       sync: async () => {
-        if (!auth) throw new Error('Zaloguj się przez GitHub przed synchronizacją.')
+        if (!auth) throw new LocalizedError('errors.loginRequiredSync')
         setSaving(true)
         setError(null)
         try {
@@ -228,11 +230,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           setDirty(false)
           await saveLocalCollection(latestData.current, sha)
         } catch (syncError) {
-          const message = syncError instanceof RemoteConflictError
-            ? 'Konflikt synchronizacji. Pobierz zdalną wersję i porównaj dane przed ponownym zapisem.'
-            : syncError instanceof Error
-              ? syncError.message
-              : 'Synchronizacja nie powiodła się.'
+           const message = localizedErrorMessage(syncError, t, 'errors.syncFailed')
           setError(message)
           throw syncError
         } finally {
@@ -246,7 +244,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       },
       completeLogin: async () => {
         const deviceCode = pendingDeviceCode.current
-        if (!deviceCode) throw new Error('Najpierw wygeneruj kod logowania GitHub.')
+         if (!deviceCode) throw new LocalizedError('errors.loginCode')
         const nextAuth = await pollDeviceLogin(deviceCode)
         const username = await getGitHubUsername(nextAuth)
         const authenticated = { ...nextAuth, username }
@@ -261,7 +259,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         setAuth(null)
       },
     }),
-    [auth, data, dirty, error, loading, loginPrompt, remoteSha, saving],
+    [auth, data, dirty, error, loading, loginPrompt, remoteSha, saving, t],
   )
 
   syncRef.current = value.sync
