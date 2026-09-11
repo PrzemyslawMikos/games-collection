@@ -3,4 +3,4 @@ main = "worker/github-auth-proxy.ts"
 compatibility_date = "2026-09-11"
 
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,https://YOUR_GITHUB_USER.github.io"
+ALLOWED_ORIGINS = "http://localhost:5173,https://przemyslawmikos.github.io"
