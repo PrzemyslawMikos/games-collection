@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type { CollectionData, Game, GameEntry, GamePlan } from '../domain/model'
 import type { CollectionStats } from '../domain/stats'
+import type { MockDataMergeResult } from '../domain/mockData'
 import type { GitHubAuth } from '../storage/github'
 
 export interface CollectionContextValue {
@@ -10,12 +11,14 @@ export interface CollectionContextValue {
   saving: boolean
   dirty: boolean
   remoteSha: string | null
+  mockDataLoaded: boolean
   error: string | null
   auth: GitHubAuth | null
   loginPrompt: { url: string; code: string } | null
   repositoryReference: string
   setError: (message: string | null) => void
   replaceData: (data: CollectionData) => void
+  loadMockData: () => Omit<MockDataMergeResult, 'data'>
   addGame: (title: string) => Game | null
   updateGame: (gameId: string, values: Partial<Pick<Game, 'title' | 'aliases' | 'notes'>>) => void
   mergeGames: (targetId: string, sourceId: string) => void

@@ -42,3 +42,20 @@ test('shows an error and keeps the current collection for an invalid JSON backup
 
   await expect(page.getByRole('alert')).toContainText('Nie udało się zaimportować kopii JSON.')
 })
+
+test('loads mock data, persists the warning, and translates it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Import i kopie' }).click()
+  await page.getByRole('button', { name: 'Załaduj dane przykładowe' }).click()
+
+  await expect(page.locator('.mock-data-banner')).toContainText('Dane przykładowe są załadowane.')
+  await expect(page.locator('.success-banner')).toContainText('Dane przykładowe załadowane. Dodano tytułów: 27, egzemplarzy: 21, planów: 9.')
+  await page.getByRole('link', { name: 'Kolekcja' }).click()
+  await expect(page.getByText('Astro Bot')).toBeVisible()
+  await expect(page.locator('.mock-data-banner')).toBeVisible()
+
+  await page.getByLabel('Język aplikacji').selectOption('en')
+  await expect(page.locator('.mock-data-banner')).toContainText('Mock data is loaded.')
+  await page.reload()
+  await expect(page.locator('.mock-data-banner')).toContainText('Mock data is loaded.')
+})

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, X } from 'lucide-react'
+import { AlertTriangle, Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, X } from 'lucide-react'
 import { useCollection } from '../app/useCollection'
 import { useTranslation } from '../i18n'
 import { applyThemePreference, getThemePreference, resolveTheme, saveThemePreference, type ThemePreference } from './theme'
@@ -14,7 +14,7 @@ const navItems = [
 ]
 
 export function Layout() {
-  const { auth, dirty, saving, error, sync, login, completeLogin, loginPrompt, setError } = useCollection()
+  const { auth, dirty, saving, error, mockDataLoaded, sync, login, completeLogin, loginPrompt, setError } = useCollection()
   const { locale, setLocale, t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => getThemePreference())
@@ -111,6 +111,7 @@ export function Layout() {
           </div>
         )}
         {loginPrompt && <div className="info-banner login-prompt"><span>{t('layout.loginPrompt')}</span><strong>{loginPrompt.code}</strong><a href={loginPrompt.url} target="_blank" rel="noreferrer">{t('layout.openGithub')}</a><button className="button button-small button-secondary" type="button" disabled={saving} onClick={() => void completeLogin()}>{t('layout.confirmAuthorization')}</button></div>}
+        {mockDataLoaded && <div className="mock-data-banner" role="status"><AlertTriangle size={17} /><span>{t('layout.mockDataBanner')}</span></div>}
         <div className="page-content">
           <Outlet />
         </div>

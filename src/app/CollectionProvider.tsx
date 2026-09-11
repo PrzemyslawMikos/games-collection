@@ -11,7 +11,7 @@ import {
   type GitHubAuth,
   writeGitHubAuth,
 } from '../storage/github'
-import { loadLocalCollection, saveLocalCollection } from '../storage/local'
+import { loadLocalCollection, loadMockDataState, saveLocalCollection, saveMockDataState } from '../storage/local'
 import {
   cloneCollection,
   createEntry,
@@ -21,6 +21,7 @@ import {
   type CollectionData,
 } from '../domain/model'
 import { calculateStats } from '../domain/stats'
+import { mergeMockCollection } from '../domain/mockData'
 import { useTranslation } from '../i18n'
 import { LocalizedError, localizedErrorMessage } from '../i18n/errors'
 import { CollectionContext, type CollectionContextValue } from './collectionContext'
@@ -39,6 +40,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     plans: [],
   }))
   const [remoteSha, setRemoteSha] = useState<string | null>(null)
+  const [mockDataLoaded, setMockDataLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -59,8 +61,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [remoteSha])
 
   useEffect(() => {
-    void loadLocalCollection()
-      .then((record) => {
+    void Promise.all([loadLocalCollection(), loadMockDataState()])
+      .then(([record, mockLoaded]) => {
+        setMockDataLoaded(mockLoaded)
         if (!record) return
         setData(record.data)
         setRemoteSha(record.remoteSha)
@@ -86,13 +89,20 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   }, [data, loading, remoteSha, t])
 
   const value = useMemo<CollectionContextValue>(
-    () => ({
+    () => {
+      const updateMockDataState = (loaded: boolean): void => {
+        setMockDataLoaded(loaded)
+        void saveMockDataState(loaded).catch(() => setError(t('errors.localSave')))
+      }
+
+      return {
       data,
       stats: calculateStats(data),
       loading,
       saving,
       dirty,
       remoteSha,
+      mockDataLoaded,
       error,
       auth,
       loginPrompt,
@@ -102,6 +112,18 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         setData(withTimestamp(cloneCollection(nextData)))
         setRemoteSha(null)
         setDirty(true)
+        updateMockDataState(false)
+      },
+      loadMockData: () => {
+        const merged = mergeMockCollection(latestData.current)
+        setData(withTimestamp(merged.data))
+        setDirty(true)
+        updateMockDataState(true)
+        return {
+          addedGames: merged.addedGames,
+          addedEntries: merged.addedEntries,
+          addedPlans: merged.addedPlans,
+        }
       },
       addGame: (title) => {
         if (!title.trim()) return null
@@ -208,9 +230,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           if (currentAuth !== auth) setAuth(currentAuth)
           const remote = await repository.load(currentAuth)
            if (!remote) throw new LocalizedError('errors.remoteMissing')
-          setData(remote.data)
-          setRemoteSha(remote.sha)
-          setDirty(false)
+           setData(remote.data)
+           setRemoteSha(remote.sha)
+           setDirty(false)
+           updateMockDataState(false)
         } catch (loadError) {
            setError(localizedErrorMessage(loadError, t, 'errors.fetchFailed'))
           throw loadError
@@ -258,8 +281,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         pendingDeviceCode.current = null
         setAuth(null)
       },
-    }),
-    [auth, data, dirty, error, loading, loginPrompt, remoteSha, saving, t],
+      }
+    },
+    [auth, data, dirty, error, loading, loginPrompt, mockDataLoaded, remoteSha, saving, t],
   )
 
   syncRef.current = value.sync
