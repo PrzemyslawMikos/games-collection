@@ -391,6 +391,7 @@ code { overflow: auto; padding: 7px 9px; border-radius: 6px; color: var(--coral-
   .entry-row { grid-template-columns: 61px minmax(0, 1fr) auto; gap: 6px 8px; padding: 13px 0; }
   .entry-row .pill { grid-column: 2; justify-self: start; }
   .entry-price { grid-column: 3; grid-row: 1 / span 2; }
+  .plan-row .entry-price { grid-row: 1; }
   .entry-actions { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; margin-top: 3px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
   .plan-row .entry-actions { grid-row: 2; }
   .plan-date { display: none; }

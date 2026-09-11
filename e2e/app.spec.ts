@@ -67,6 +67,9 @@ test('adds and displays a canonical game', async ({ page }) => {
   await expect(page.getByText('Testowy tytuł')).not.toBeVisible()
   await completionFilter.selectOption('all')
 
+  await page.getByRole('button', { name: 'Dodaj plan' }).first().click()
+  await page.getByRole('button', { name: 'Dodaj plan' }).last().click()
+
   const doesItPlayLink = page.getByRole('link', { name: 'Sprawdź Testowy tytuł w DoesItPlay' })
   await expect(doesItPlayLink).toHaveAttribute('href', 'https://www.doesitplay.org/list?platform=PS4')
   await expect(doesItPlayLink).toHaveAttribute('target', '_blank')
@@ -85,6 +88,17 @@ test('adds and displays a canonical game', async ({ page }) => {
   if (expandedBodyBox && expandedActionsBox) {
     expect(expandedBodyBox.x + expandedBodyBox.width).toBeLessThanOrEqual(390)
     expect(expandedActionsBox.x + expandedActionsBox.width).toBeLessThanOrEqual(390)
+  }
+  const missingPricePlan = expandedBody.locator('.plan-row')
+  const missingPriceLabel = missingPricePlan.locator('.entry-price')
+  const missingPriceActions = missingPricePlan.locator('.entry-actions')
+  await expect(missingPriceLabel).toHaveText('Brak ceny')
+  const missingPriceBox = await missingPriceLabel.boundingBox()
+  const missingPriceActionsBox = await missingPriceActions.boundingBox()
+  expect(missingPriceBox).not.toBeNull()
+  expect(missingPriceActionsBox).not.toBeNull()
+  if (missingPriceBox && missingPriceActionsBox) {
+    expect(missingPriceBox.y + missingPriceBox.height).toBeLessThanOrEqual(missingPriceActionsBox.y)
   }
 
   await page.goto('./games')
