@@ -16,6 +16,27 @@ test('renders dashboard charts and their empty states', async ({ page }) => {
   await expect(page.getByText('Dodaj daty zakupu, aby zobaczyć oś czasu.')).toBeVisible()
 })
 
+test('shows the five-game future-play queue and keeps actions within a mobile viewport', async ({ page }) => {
+  await page.goto('./import-export')
+  await page.getByRole('button', { name: 'Załaduj dane przykładowe' }).click()
+  await page.getByRole('link', { name: 'Przegląd' }).click()
+
+  const futurePlay = page.locator('.future-play-panel')
+  await expect(futurePlay.getByRole('heading', { name: 'Do zagrania' })).toBeVisible()
+  await expect(futurePlay.locator('.future-play-row')).toHaveCount(5)
+  await expect(futurePlay.getByRole('button', { name: 'Dodaj grę' })).toBeDisabled()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const panelBox = await futurePlay.boundingBox()
+  const rowBox = await futurePlay.locator('.future-play-row').first().boundingBox()
+  expect(panelBox).not.toBeNull()
+  expect(rowBox).not.toBeNull()
+  if (panelBox && rowBox) expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(panelBox.x + panelBox.width)
+
+  await futurePlay.getByRole('button', { name: 'Oznacz jako ukończoną' }).first().click()
+  await expect(futurePlay.locator('.future-play-row')).toHaveCount(4)
+})
+
 test('switches language and keeps the preference after navigation', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Ustawienia' }).click()

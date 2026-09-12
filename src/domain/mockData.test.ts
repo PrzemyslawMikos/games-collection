@@ -10,6 +10,7 @@ describe('mock collection data', () => {
     expect(result.data.games).toHaveLength(27)
     expect(result.data.entries).toHaveLength(21)
     expect(result.data.plans).toHaveLength(9)
+    expect(result.data.futurePlayGameIds).toHaveLength(5)
   })
 
   it('does not add the same sample records twice', () => {

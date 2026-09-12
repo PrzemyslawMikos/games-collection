@@ -15,8 +15,11 @@ import { loadLocalCollection, loadMockDataState, saveLocalCollection, saveMockDa
 import {
   cloneCollection,
   createEntry,
+  createEmptyCollection,
   createGame,
   createPlan,
+  migrateCollection,
+  normalizeCollection,
   now,
   type CollectionData,
 } from '../domain/model'
@@ -28,17 +31,11 @@ import { CollectionContext, type CollectionContextValue } from './collectionCont
 
 const repository = new GitHubCollectionRepository()
 
-const withTimestamp = (data: CollectionData): CollectionData => ({ ...data, updatedAt: now() })
+const withTimestamp = (data: CollectionData): CollectionData => ({ ...normalizeCollection(data), updatedAt: now() })
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
-  const [data, setData] = useState<CollectionData>(() => ({
-    schemaVersion: 1,
-    updatedAt: now(),
-    games: [],
-    entries: [],
-    plans: [],
-  }))
+  const [data, setData] = useState<CollectionData>(createEmptyCollection)
   const [remoteSha, setRemoteSha] = useState<string | null>(null)
   const [mockDataLoaded, setMockDataLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -65,7 +62,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       .then(([record, mockLoaded]) => {
         setMockDataLoaded(mockLoaded)
         if (!record) return
-        setData(record.data)
+        setData(migrateCollection(record.data))
         setRemoteSha(record.remoteSha)
         setDirty(false)
       })
@@ -162,6 +159,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
               .map((game) => game.id === targetId ? { ...game, aliases, updatedAt: now() } : game),
             entries: current.entries.map((entry) => entry.gameId === sourceId ? { ...entry, gameId: targetId, updatedAt: now() } : entry),
             plans: current.plans.map((plan) => plan.gameId === sourceId ? { ...plan, gameId: targetId, updatedAt: now() } : plan),
+            futurePlayGameIds: current.futurePlayGameIds.map((gameId) => gameId === sourceId ? targetId : gameId),
           }
         })
       },
@@ -187,6 +185,41 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       },
       deleteEntry: (entryId) => {
         mutate((current) => ({ ...current, entries: current.entries.filter((entry) => entry.id !== entryId) }))
+      },
+      addFuturePlayGame: (gameId) => {
+        mutate((current) => {
+          if (current.futurePlayGameIds.length >= 5 || current.futurePlayGameIds.includes(gameId)) return current
+          if (!current.games.some((game) => game.id === gameId) || !current.entries.some((entry) => entry.gameId === gameId)) return current
+          return { ...current, futurePlayGameIds: [...current.futurePlayGameIds, gameId] }
+        })
+      },
+      removeFuturePlayGame: (gameId) => {
+        mutate((current) => ({
+          ...current,
+          futurePlayGameIds: current.futurePlayGameIds.filter((candidate) => candidate !== gameId),
+        }))
+      },
+      moveFuturePlayGame: (gameId, direction) => {
+        mutate((current) => {
+          const index = current.futurePlayGameIds.indexOf(gameId)
+          const targetIndex = direction === 'up' ? index - 1 : index + 1
+          if (index < 0 || targetIndex < 0 || targetIndex >= current.futurePlayGameIds.length) return current
+          const futurePlayGameIds = [...current.futurePlayGameIds]
+          const targetGameId = futurePlayGameIds[targetIndex]
+          futurePlayGameIds[targetIndex] = futurePlayGameIds[index]
+          futurePlayGameIds[index] = targetGameId
+          return { ...current, futurePlayGameIds }
+        })
+      },
+      reorderFuturePlayGame: (gameId, targetIndex) => {
+        mutate((current) => {
+          const sourceIndex = current.futurePlayGameIds.indexOf(gameId)
+          if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= current.futurePlayGameIds.length || sourceIndex === targetIndex) return current
+          const futurePlayGameIds = [...current.futurePlayGameIds]
+          futurePlayGameIds.splice(sourceIndex, 1)
+          futurePlayGameIds.splice(targetIndex, 0, gameId)
+          return { ...current, futurePlayGameIds }
+        })
       },
       addPlan: (gameId, values) => {
         const plan = createPlan(gameId, values)
@@ -226,11 +259,11 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         setSaving(true)
         setError(null)
         try {
-          const currentAuth = await refreshGitHubAuth(auth)
-          if (currentAuth !== auth) setAuth(currentAuth)
-          const remote = await repository.load(currentAuth)
+           const currentAuth = await refreshGitHubAuth(auth)
+           if (currentAuth !== auth) setAuth(currentAuth)
+           const remote = await repository.load(currentAuth)
            if (!remote) throw new LocalizedError('errors.remoteMissing')
-           setData(remote.data)
+           setData(migrateCollection(remote.data))
            setRemoteSha(remote.sha)
            setDirty(false)
            updateMockDataState(false)

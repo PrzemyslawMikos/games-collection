@@ -1,6 +1,13 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "updatedAt": "2026-01-15T12:00:00.000Z",
+  "futurePlayGameIds": [
+    "mock_game_astro_bot",
+    "mock_game_elden_ring",
+    "mock_game_resident_evil_4",
+    "mock_game_baldurs_gate_iii",
+    "mock_game_bloodborne"
+  ],
   "games": [
     {
       "id": "mock_game_astro_bot",

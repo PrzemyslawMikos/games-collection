@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const DATA_SCHEMA_VERSION = 1 as const
+export const DATA_SCHEMA_VERSION = 2 as const
 
 export const completionStatuses = ['not-started', 'not-completed', 'completed'] as const
 export type CompletionStatus = (typeof completionStatuses)[number]
@@ -59,12 +59,12 @@ export interface CollectionData {
   games: Game[]
   entries: GameEntry[]
   plans: GamePlan[]
+  futurePlayGameIds: string[]
 }
 
 const isoDate = z.string().datetime({ offset: true })
 
-export const collectionSchema = z.object({
-  schemaVersion: z.literal(DATA_SCHEMA_VERSION),
+const collectionFields = {
   updatedAt: isoDate,
   games: z.array(
     z.object({
@@ -108,6 +108,17 @@ export const collectionSchema = z.object({
       updatedAt: isoDate,
     }),
   ),
+}
+
+const legacyCollectionSchema = z.object({
+  schemaVersion: z.literal(1),
+  ...collectionFields,
+})
+
+export const collectionSchema = z.object({
+  schemaVersion: z.literal(DATA_SCHEMA_VERSION),
+  ...collectionFields,
+  futurePlayGameIds: z.array(z.string().min(1)),
 })
 
 export const makeId = (prefix: string): string => {
@@ -126,6 +137,7 @@ export const createEmptyCollection = (): CollectionData => ({
   games: [],
   entries: [],
   plans: [],
+  futurePlayGameIds: [],
 })
 
 export const createGame = (title: string, timestamp = now()): Game => ({
@@ -177,3 +189,26 @@ export const createPlan = (
 
 export const cloneCollection = (data: CollectionData): CollectionData =>
   structuredClone(data)
+
+export const normalizeCollection = (data: CollectionData): CollectionData => {
+  const gameIds = new Set(data.games.map((game) => game.id))
+  const ownedGameIds = new Set(data.entries.map((entry) => entry.gameId))
+  const futurePlayGameIds = [...new Set(data.futurePlayGameIds ?? [])]
+    .filter((gameId) => gameIds.has(gameId) && ownedGameIds.has(gameId))
+    .slice(0, 5)
+
+  return { ...data, schemaVersion: DATA_SCHEMA_VERSION, futurePlayGameIds }
+}
+
+export const migrateCollection = (input: unknown): CollectionData => {
+  const schemaVersion = typeof input === 'object' && input !== null && 'schemaVersion' in input
+    ? (input as { schemaVersion?: unknown }).schemaVersion
+    : undefined
+
+  if (schemaVersion === 1) {
+    const legacy = legacyCollectionSchema.parse(input)
+    return normalizeCollection({ ...legacy, schemaVersion: DATA_SCHEMA_VERSION, futurePlayGameIds: [] })
+  }
+
+  return normalizeCollection(collectionSchema.parse(input))
+}

@@ -1,6 +1,6 @@
 import mockCollectionJson from '../data/mock-collection.json'
 import { parseJsonCollection } from './jsonImporter'
-import { cloneCollection, type CollectionData } from './model'
+import { cloneCollection, normalizeCollection, type CollectionData } from './model'
 import { normalizeTitle } from './normalize'
 
 export interface MockDataMergeResult {
@@ -67,5 +67,10 @@ export const mergeMockCollection = (current: CollectionData, mock = mockCollecti
     addedPlans += 1
   }
 
-  return { data, addedGames, addedEntries, addedPlans }
+  data.futurePlayGameIds = [
+    ...data.futurePlayGameIds,
+    ...mock.futurePlayGameIds.map((gameId) => gameIds.get(gameId)).filter((gameId): gameId is string => Boolean(gameId)),
+  ]
+
+  return { data: normalizeCollection(data), addedGames, addedEntries, addedPlans }
 }

@@ -1,4 +1,4 @@
-import { collectionSchema, type CollectionData } from '../domain/model'
+import { migrateCollection, type CollectionData } from '../domain/model'
 import { LocalizedError } from '../i18n/errors'
 
 const GITHUB_API = 'https://api.github.com'
@@ -204,7 +204,7 @@ export class GitHubCollectionRepository {
 
     try {
       const json = decodeBase64(file.content)
-      const data = collectionSchema.parse(JSON.parse(json))
+       const data = migrateCollection(JSON.parse(json))
       return { data, sha: file.sha }
     } catch {
       throw new LocalizedError('errors.githubResponse')

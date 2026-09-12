@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyCollection, createEntry, createGame, createPlan } from './model'
+import { createEmptyCollection, createEntry, createGame, createPlan, normalizeCollection } from './model'
 import { calculateStats } from './stats'
 
 describe('collection statistics', () => {
@@ -27,5 +27,16 @@ describe('collection statistics', () => {
       completionProgress: 50,
     })
     expect(calculateStats(data).totalSpend).toEqual([{ currency: 'PLN', amount: 200 }])
+  })
+
+  it('keeps only valid, unique, owned future-play games in priority order', () => {
+    const data = createEmptyCollection()
+    const owned = createGame('Owned')
+    const unowned = createGame('Unowned')
+    data.games.push(owned, unowned)
+    data.entries.push(createEntry(owned.id, { platform: 'PS5' }))
+    data.futurePlayGameIds = [owned.id, owned.id, unowned.id, 'missing']
+
+    expect(normalizeCollection(data).futurePlayGameIds).toEqual([owned.id])
   })
 })
