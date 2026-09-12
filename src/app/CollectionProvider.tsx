@@ -189,13 +189,22 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       addFuturePlayGame: (gameId) => {
         mutate((current) => {
           if (current.futurePlayGameIds.length >= 5 || current.futurePlayGameIds.includes(gameId)) return current
-          if (!current.games.some((game) => game.id === gameId) || !current.entries.some((entry) => entry.gameId === gameId)) return current
+          if (!current.games.some((game) => game.id === gameId) || !current.entries.some((entry) => entry.gameId === gameId && entry.completion !== 'completed')) return current
           return { ...current, futurePlayGameIds: [...current.futurePlayGameIds, gameId] }
         })
       },
       removeFuturePlayGame: (gameId) => {
         mutate((current) => ({
           ...current,
+          futurePlayGameIds: current.futurePlayGameIds.filter((candidate) => candidate !== gameId),
+        }))
+      },
+      finishFuturePlayGame: (gameId) => {
+        mutate((current) => ({
+          ...current,
+          entries: current.entries.map((entry) => entry.gameId === gameId
+            ? { ...entry, completion: 'completed', updatedAt: now() }
+            : entry),
           futurePlayGameIds: current.futurePlayGameIds.filter((candidate) => candidate !== gameId),
         }))
       },

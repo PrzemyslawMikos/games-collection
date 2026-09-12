@@ -102,7 +102,7 @@ export function DashboardPage() {
 }
 
 function FuturePlayPanel() {
-  const { data, addFuturePlayGame, removeFuturePlayGame, moveFuturePlayGame, reorderFuturePlayGame } = useCollection()
+  const { data, addFuturePlayGame, finishFuturePlayGame, moveFuturePlayGame, reorderFuturePlayGame } = useCollection()
   const { t } = useTranslation()
   const [addOpen, setAddOpen] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
@@ -110,8 +110,9 @@ function FuturePlayPanel() {
   const [selectionError, setSelectionError] = useState('')
   const [draggedGameId, setDraggedGameId] = useState<string | null>(null)
   const ownedGameIds = new Set(data.entries.map((entry) => entry.gameId))
+  const unfinishedGameIds = new Set(data.entries.filter((entry) => entry.completion !== 'completed').map((entry) => entry.gameId))
   const candidates = data.games
-    .filter((game) => ownedGameIds.has(game.id) && !data.futurePlayGameIds.includes(game.id))
+    .filter((game) => ownedGameIds.has(game.id) && unfinishedGameIds.has(game.id) && !data.futurePlayGameIds.includes(game.id))
     .sort((a, b) => a.title.localeCompare(b.title))
   const rows = data.futurePlayGameIds
     .map((gameId) => data.games.find((game) => game.id === gameId))
@@ -187,7 +188,7 @@ function FuturePlayPanel() {
               <div className="future-play-actions" data-label={t('dashboard.futurePlayActions')}>
                 <button className="icon-button future-order-button" type="button" disabled={index === 0} aria-label={t('dashboard.futurePlayMoveUp', { title: game.title })} onClick={() => moveFuturePlayGame(game.id, 'up')}><ArrowUp size={16} /></button>
                 <button className="icon-button future-order-button" type="button" disabled={index === rows.length - 1} aria-label={t('dashboard.futurePlayMoveDown', { title: game.title })} onClick={() => moveFuturePlayGame(game.id, 'down')}><ArrowDown size={16} /></button>
-                <button className="button button-small future-finish-button" type="button" onClick={() => removeFuturePlayGame(game.id)}><Check size={15} /> {t('dashboard.futurePlayFinished')}</button>
+                <button className="button button-small future-finish-button" type="button" onClick={() => finishFuturePlayGame(game.id)}><Check size={15} /> {t('dashboard.futurePlayFinished')}</button>
               </div>
             </div>
           })}

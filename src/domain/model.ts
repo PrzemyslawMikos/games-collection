@@ -192,9 +192,9 @@ export const cloneCollection = (data: CollectionData): CollectionData =>
 
 export const normalizeCollection = (data: CollectionData): CollectionData => {
   const gameIds = new Set(data.games.map((game) => game.id))
-  const ownedGameIds = new Set(data.entries.map((entry) => entry.gameId))
+  const unfinishedGameIds = new Set(data.entries.filter((entry) => entry.completion !== 'completed').map((entry) => entry.gameId))
   const futurePlayGameIds = [...new Set(data.futurePlayGameIds ?? [])]
-    .filter((gameId) => gameIds.has(gameId) && ownedGameIds.has(gameId))
+    .filter((gameId) => gameIds.has(gameId) && unfinishedGameIds.has(gameId))
     .slice(0, 5)
 
   return { ...data, schemaVersion: DATA_SCHEMA_VERSION, futurePlayGameIds }

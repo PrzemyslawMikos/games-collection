@@ -32,11 +32,19 @@ describe('collection statistics', () => {
   it('keeps only valid, unique, owned future-play games in priority order', () => {
     const data = createEmptyCollection()
     const owned = createGame('Owned')
+    const partlyCompleted = createGame('Partly completed')
     const unowned = createGame('Unowned')
-    data.games.push(owned, unowned)
-    data.entries.push(createEntry(owned.id, { platform: 'PS5' }))
-    data.futurePlayGameIds = [owned.id, owned.id, unowned.id, 'missing']
+    data.games.push(owned, partlyCompleted, unowned)
+    data.entries.push(
+      createEntry(owned.id, { platform: 'PS5' }),
+      createEntry(partlyCompleted.id, { platform: 'PS5', completion: 'completed' }),
+      createEntry(partlyCompleted.id, { platform: 'PS4', completion: 'not-completed' }),
+    )
+    data.futurePlayGameIds = [owned.id, partlyCompleted.id, owned.id, unowned.id, 'missing']
 
-    expect(normalizeCollection(data).futurePlayGameIds).toEqual([owned.id])
+    expect(normalizeCollection(data).futurePlayGameIds).toEqual([owned.id, partlyCompleted.id])
+
+    data.entries[2].completion = 'completed'
+    expect(normalizeCollection({ ...data, futurePlayGameIds: [partlyCompleted.id] }).futurePlayGameIds).toEqual([])
   })
 })

@@ -35,6 +35,11 @@ test('shows the five-game future-play queue and keeps actions within a mobile vi
 
   await futurePlay.getByRole('button', { name: 'Oznacz jako ukończoną' }).first().click()
   await expect(futurePlay.locator('.future-play-row')).toHaveCount(4)
+
+  await page.goto('./collection')
+  const finishedGame = page.locator('.game-group').filter({ hasText: 'Elden Ring' })
+  await finishedGame.locator('.group-toggle').click()
+  await expect(finishedGame.locator('.entry-row .pill-completed')).toBeVisible()
 })
 
 test('switches language and keeps the preference after navigation', async ({ page }) => {

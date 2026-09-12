@@ -28,6 +28,7 @@ export interface CollectionContextValue {
   deleteEntry: (entryId: string) => void
   addFuturePlayGame: (gameId: string) => void
   removeFuturePlayGame: (gameId: string) => void
+  finishFuturePlayGame: (gameId: string) => void
   moveFuturePlayGame: (gameId: string, direction: 'up' | 'down') => void
   reorderFuturePlayGame: (gameId: string, targetIndex: number) => void
   addPlan: (gameId: string, values: Partial<Omit<GamePlan, 'id' | 'gameId' | 'createdAt' | 'updatedAt'>>) => void
