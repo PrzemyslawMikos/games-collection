@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { AlertTriangle, Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, Upload, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, Upload, X } from 'lucide-react'
 import { useCollection } from '../app/useCollection'
 import { useTranslation } from '../i18n'
 import { applyThemePreference, getThemePreference, resolveTheme, saveThemePreference, type ThemePreference } from './theme'
@@ -8,6 +8,7 @@ import { applyThemePreference, getThemePreference, resolveTheme, saveThemePrefer
 const navItems = [
   { to: '/', label: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/collection', label: 'nav.collection', icon: Gamepad2 },
+  { to: '/buy-plan', label: 'nav.buyPlan', icon: CalendarDays },
   { to: '/games', label: 'nav.games', icon: PackageOpen },
   { to: '/import-export', label: 'nav.importExport', icon: Download },
   { to: '/settings', label: 'nav.settings', icon: Settings },

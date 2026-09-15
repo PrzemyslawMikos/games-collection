@@ -226,6 +226,30 @@ h2 { font-size: 1.12rem; letter-spacing: -.018em; }
 .filter-tabs button.active { color: var(--coral-dark); background: color-mix(in srgb, var(--coral) 11%, transparent); font-weight: 700; }
 .mobile-filter-field { display: none; }
 .game-list, .canonical-list { display: grid; gap: 10px; }
+.buy-plan-list { display: grid; gap: 10px; }
+.buy-plan-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 17px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 5px 16px rgba(24, 56, 73, .04); }
+.buy-plan-row-overdue { border-color: color-mix(in srgb, #b54f4c 48%, var(--line)); background: color-mix(in srgb, #b54f4c 4%, var(--panel)); }
+.buy-plan-main { display: grid; min-width: 0; flex: 1; gap: 10px; }
+.buy-plan-title { display: flex; min-width: 0; align-items: center; gap: 11px; }
+.buy-plan-title > div { display: grid; min-width: 0; gap: 4px; }
+.buy-plan-title h2 { overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+.buy-plan-title p { overflow: hidden; color: var(--muted); font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.buy-plan-meta { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 9px 15px; }
+.buy-plan-date { display: inline-flex; min-width: 130px; align-items: center; gap: 8px; color: var(--muted); font-size: .68rem; }
+.buy-plan-date strong { display: grid; gap: 2px; }
+.days-to-premiere { color: var(--blue); font-family: 'DM Mono', monospace; font-size: .58rem; white-space: nowrap; }
+.buy-plan-row-overdue .days-to-premiere { color: #b54f4c; }
+.buy-plan-date strong { color: var(--ink); font-weight: 600; }
+.overdue-label, .not-scheduled-label { display: inline-flex; align-items: center; gap: 4px; color: #b54f4c; font-size: .61rem; font-weight: 700; }
+.not-scheduled-label { color: var(--muted); }
+.buy-plan-priority { color: var(--muted); font-size: .64rem; }
+.buy-plan-notes { max-width: 760px; overflow-wrap: anywhere; color: var(--muted); font-size: .67rem; line-height: 1.4; white-space: pre-wrap; }
+.buy-plan-hint { color: #b54f4c; font-size: .62rem; line-height: 1.35; }
+.buy-plan-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+.buy-plan-toolbar { justify-content: end; }
+.buy-plan-toolbar .select-field { border-left: 0; }
+.plan-status-planned { color: #99772b; background: #faefcf; }
+.plan-status-ordered { color: #3f6e9d; background: #e2edfc; }
 .game-group { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); box-shadow: 0 5px 16px rgba(24, 56, 73, .04); }
 .game-group-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; }
 .group-toggle { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 0; border: 0; color: var(--ink); background: transparent; text-align: left; }
@@ -436,6 +460,14 @@ code { overflow: auto; padding: 7px 9px; border-radius: 6px; color: var(--coral-
   .group-summary .mini-status { display: none; }
   .group-toggle { flex: 1; align-items: flex-start; }
   .game-group-body { padding: 0 10px 10px; }
+  .buy-plan-row { align-items: stretch; flex-direction: column; gap: 11px; padding: 14px 12px; }
+  .buy-plan-title { align-items: flex-start; }
+  .buy-plan-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 11px; }
+  .buy-plan-date { min-width: 0; }
+  .buy-plan-meta .entry-price { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .buy-plan-actions { justify-content: flex-end; padding-top: 7px; border-top: 1px solid var(--line); }
+  .buy-plan-toolbar { display: block; }
+  .buy-plan-toolbar .select-field { display: grid; padding: 0; border: 0; }
   .group-actions { flex-wrap: wrap; }
   .group-actions .button { flex: 1 1 130px; }
   .entry-row { grid-template-columns: 61px minmax(0, 1fr) auto; gap: 6px 8px; padding: 13px 0; }

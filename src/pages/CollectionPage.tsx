@@ -8,7 +8,8 @@ import { doesItPlayListUrl } from '../integrations/doesItPlay'
 import { useTranslation } from '../i18n'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
-import { EntryForm, GameForm, PlanForm } from '../ui/forms'
+import { EntryForm, GameForm } from '../ui/forms'
+import { PlanConversionModal, PlanModal } from '../ui/PlanModal'
 import { conditionLabelKey, completionLabelKey, formatDate, formatMoney, planStatusLabelKey, priorityLabelKey } from '../ui/format'
 
 type ModalState =
@@ -79,8 +80,8 @@ export function CollectionPage() {
 
       {modal?.kind === 'game' && <Modal title={modal.game ? t('collection.editGame') : t('collection.addGame')} onClose={() => setModal(null)}><GameForm initial={modal.game} submitLabel={modal.game ? t('common.saveChanges') : t('common.addGame')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.game) updateGame(modal.game.id, values); else { const created = addGame(values.title); if (created) updateGame(created.id, { aliases: values.aliases, notes: values.notes }) } setModal(null) }} /></Modal>}
       {modal?.kind === 'entry' && <Modal title={modal.entry ? t('collection.editCopy') : t('collection.addCopy')} wide onClose={() => setModal(null)}><EntryForm initial={modal.entry} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={modal.entry ? t('common.saveChanges') : t('common.addEntry')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.entry) updateEntry(modal.entry.id, values); else addEntry(modal.gameId, values); setModal(null) }} /></Modal>}
-      {modal?.kind === 'plan' && <Modal title={modal.plan ? t('collection.editPlan') : t('collection.addPlan')} wide onClose={() => setModal(null)}><PlanForm initial={modal.plan} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={modal.plan ? t('common.saveChanges') : t('common.addPlan')} onCancel={() => setModal(null)} onSubmit={(values) => { if (modal.plan) updatePlan(modal.plan.id, values); else addPlan(modal.gameId, values); setModal(null) }} /></Modal>}
-      {modal?.kind === 'convert' && <Modal title={t('collection.convertPlan')} wide onClose={() => setModal(null)}><EntryForm initial={{ platform: modal.plan.platform, version: modal.plan.version, notes: modal.plan.notes, condition: 'unknown', completion: 'not-started' }} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} submitLabel={t('collection.addToCollection')} onCancel={() => setModal(null)} onSubmit={(values) => { convertPlan(modal.plan.id, values); setModal(null) }} /></Modal>}
+      {modal?.kind === 'plan' && <PlanModal plan={modal.plan} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} onClose={() => setModal(null)} onSubmit={(values) => { if (modal.plan) updatePlan(modal.plan.id, values); else addPlan(modal.gameId, values); setModal(null) }} />}
+      {modal?.kind === 'convert' && <PlanConversionModal plan={modal.plan} platformSuggestions={platformSuggestions} currencySuggestions={currencySuggestions} onClose={() => setModal(null)} onSubmit={(values) => { convertPlan(modal.plan.id, values); setModal(null) }} />}
     </div>
   )
 }
