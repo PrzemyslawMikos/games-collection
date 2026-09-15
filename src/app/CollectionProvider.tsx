@@ -97,34 +97,50 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       setRemoteChanged(false)
       return
     }
-    if (remoteCheckToken.current === auth.accessToken || remoteCheckPromise.current) return
 
-    remoteCheckToken.current = auth.accessToken
-    const generation = ++remoteCheckGeneration.current
-    const checkRemote = async (): Promise<void> => {
-      setSaving(true)
-      setError(null)
-      try {
-        const currentAuth = await refreshGitHubAuth(auth)
-        remoteCheckToken.current = currentAuth.accessToken
-        if (currentAuth !== auth) setAuth(currentAuth)
-        const remote = await repository.load(currentAuth)
-        if (generation !== remoteCheckGeneration.current) return
-        setRemoteChanged(remoteVersionChanged(remote?.sha ?? null, latestRemoteSha.current))
-      } catch (checkError) {
-        if (generation !== remoteCheckGeneration.current) return
-        setRemoteChanged(false)
-        setError(localizedErrorMessage(checkError, t, 'errors.fetchFailed'))
-      } finally {
-        if (generation === remoteCheckGeneration.current) setSaving(false)
-      }
+    const checkRemote = (): void => {
+      if (remoteCheckToken.current === auth.accessToken || remoteCheckPromise.current) return
+
+      remoteCheckToken.current = auth.accessToken
+      const generation = ++remoteCheckGeneration.current
+      const promise = (async (): Promise<void> => {
+        setSaving(true)
+        setError(null)
+        try {
+          const currentAuth = await refreshGitHubAuth(auth)
+          remoteCheckToken.current = currentAuth.accessToken
+          if (currentAuth !== auth) setAuth(currentAuth)
+          const remote = await repository.load(currentAuth)
+          if (generation !== remoteCheckGeneration.current) return
+          setRemoteChanged(remoteVersionChanged(remote?.sha ?? null, latestRemoteSha.current))
+        } catch (checkError) {
+          if (generation !== remoteCheckGeneration.current) return
+          setRemoteChanged(false)
+          setError(localizedErrorMessage(checkError, t, 'errors.fetchFailed'))
+        } finally {
+          if (generation === remoteCheckGeneration.current) setSaving(false)
+        }
+      })()
+
+      remoteCheckPromise.current = promise
+      void promise.finally(() => {
+        if (remoteCheckPromise.current === promise) remoteCheckPromise.current = null
+      })
     }
 
-    const promise = checkRemote()
-    remoteCheckPromise.current = promise
-    void promise.finally(() => {
-      if (remoteCheckPromise.current === promise) remoteCheckPromise.current = null
-    })
+    const checkOnResume = (): void => {
+      if (document.visibilityState !== 'visible') return
+      remoteCheckToken.current = null
+      checkRemote()
+    }
+
+    checkRemote()
+    window.addEventListener('pageshow', checkOnResume)
+    document.addEventListener('visibilitychange', checkOnResume)
+    return () => {
+      window.removeEventListener('pageshow', checkOnResume)
+      document.removeEventListener('visibilitychange', checkOnResume)
+    }
   }, [auth, loading, t])
 
   const value = useMemo<CollectionContextValue>(
