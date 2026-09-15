@@ -70,6 +70,7 @@ h2 { font-size: 1.12rem; letter-spacing: -.018em; }
 .main-content { width: calc(100% - 248px); min-width: 0; margin-left: 248px; }
 .topbar { display: flex; min-height: 70px; align-items: center; gap: 13px; padding: 0 5.5vw; border-bottom: 1px solid var(--line); }
 .topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
 .sync-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .72rem; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; }
 .status-dot-ok { background: var(--green); }
@@ -391,6 +392,9 @@ code { overflow: auto; padding: 7px 9px; border-radius: 6px; color: var(--coral-
   h1 { font-size: 2.75rem; }
   .sync-status { display: none; }
   .topbar { min-height: 62px; }
+  .topbar-actions { gap: 4px; }
+  .sync-action { width: 31px; min-height: 31px; padding: 0; border: 0; border-radius: 8px; box-shadow: none; }
+  .sync-action .toolbar-action-text { display: none; }
   .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat-card { min-height: 145px; padding: 14px; }
   .stat-card strong { font-size: 1.65rem; }

@@ -28,6 +28,7 @@ import { mergeMockCollection } from '../domain/mockData'
 import { useTranslation } from '../i18n'
 import { LocalizedError, localizedErrorMessage } from '../i18n/errors'
 import { CollectionContext, type CollectionContextValue } from './collectionContext'
+import { remoteVersionChanged } from './syncState'
 
 const repository = new GitHubCollectionRepository()
 
@@ -41,6 +42,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [remoteChanged, setRemoteChanged] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [auth, setAuth] = useState<GitHubAuth | null>(() => readGitHubAuth())
   const [loginPrompt, setLoginPrompt] = useState<{ url: string; code: string } | null>(null)
@@ -48,6 +50,9 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
   const latestData = useRef(data)
   const latestRemoteSha = useRef(remoteSha)
   const syncRef = useRef<() => Promise<void>>(async () => undefined)
+  const remoteCheckToken = useRef<string | null>(null)
+  const remoteCheckPromise = useRef<Promise<void> | null>(null)
+  const remoteCheckGeneration = useRef(0)
 
   useEffect(() => {
     latestData.current = data
@@ -85,6 +90,43 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     void saveLocalCollection(data, remoteSha).catch(() => setError(t('errors.localSave')))
   }, [data, loading, remoteSha, t])
 
+  useEffect(() => {
+    if (loading) return
+    if (!auth) {
+      remoteCheckToken.current = null
+      setRemoteChanged(false)
+      return
+    }
+    if (remoteCheckToken.current === auth.accessToken || remoteCheckPromise.current) return
+
+    remoteCheckToken.current = auth.accessToken
+    const generation = ++remoteCheckGeneration.current
+    const checkRemote = async (): Promise<void> => {
+      setSaving(true)
+      setError(null)
+      try {
+        const currentAuth = await refreshGitHubAuth(auth)
+        remoteCheckToken.current = currentAuth.accessToken
+        if (currentAuth !== auth) setAuth(currentAuth)
+        const remote = await repository.load(currentAuth)
+        if (generation !== remoteCheckGeneration.current) return
+        setRemoteChanged(remoteVersionChanged(remote?.sha ?? null, latestRemoteSha.current))
+      } catch (checkError) {
+        if (generation !== remoteCheckGeneration.current) return
+        setRemoteChanged(false)
+        setError(localizedErrorMessage(checkError, t, 'errors.fetchFailed'))
+      } finally {
+        if (generation === remoteCheckGeneration.current) setSaving(false)
+      }
+    }
+
+    const promise = checkRemote()
+    remoteCheckPromise.current = promise
+    void promise.finally(() => {
+      if (remoteCheckPromise.current === promise) remoteCheckPromise.current = null
+    })
+  }, [auth, loading, t])
+
   const value = useMemo<CollectionContextValue>(
     () => {
       const updateMockDataState = (loaded: boolean): void => {
@@ -93,19 +135,20 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       }
 
       return {
-      data,
-      stats: calculateStats(data),
-      loading,
-      saving,
-      dirty,
-      remoteSha,
-      mockDataLoaded,
-      error,
-      auth,
-      loginPrompt,
-      repositoryReference: repository.reference,
-      setError,
-      replaceData: (nextData) => {
+        data,
+        stats: calculateStats(data),
+        loading,
+        saving,
+        dirty,
+        remoteChanged,
+        remoteSha,
+        mockDataLoaded,
+        error,
+        auth,
+        loginPrompt,
+        repositoryReference: repository.reference,
+        setError,
+        replaceData: (nextData) => {
         setData(withTimestamp(cloneCollection(nextData)))
         setRemoteSha(null)
         setDirty(true)
@@ -275,6 +318,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
            setData(migrateCollection(remote.data))
            setRemoteSha(remote.sha)
            setDirty(false)
+           setRemoteChanged(false)
            updateMockDataState(false)
         } catch (loadError) {
            setError(localizedErrorMessage(loadError, t, 'errors.fetchFailed'))
@@ -293,6 +337,7 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
           const sha = await repository.save(currentAuth, latestData.current, latestRemoteSha.current)
           setRemoteSha(sha)
           setDirty(false)
+          setRemoteChanged(false)
           await saveLocalCollection(latestData.current, sha)
         } catch (syncError) {
            const message = localizedErrorMessage(syncError, t, 'errors.syncFailed')
@@ -321,11 +366,15 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
       logout: () => {
         clearGitHubAuth()
         pendingDeviceCode.current = null
+        remoteCheckGeneration.current += 1
+        remoteCheckToken.current = null
+        setRemoteChanged(false)
+        setSaving(false)
         setAuth(null)
       },
       }
     },
-    [auth, data, dirty, error, loading, loginPrompt, mockDataLoaded, remoteSha, saving, t],
+    [auth, data, dirty, error, loading, loginPrompt, mockDataLoaded, remoteChanged, remoteSha, saving, t],
   )
 
   syncRef.current = value.sync

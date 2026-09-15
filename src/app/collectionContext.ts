@@ -10,6 +10,7 @@ export interface CollectionContextValue {
   loading: boolean
   saving: boolean
   dirty: boolean
+  remoteChanged: boolean
   remoteSha: string | null
   mockDataLoaded: boolean
   error: string | null

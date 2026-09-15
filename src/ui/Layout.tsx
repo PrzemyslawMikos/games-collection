@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { AlertTriangle, Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, X } from 'lucide-react'
+import { NavLink, Outlet } from 'react-router-dom'
+import { AlertTriangle, Cloud, CloudOff, Download, Gamepad2, LayoutDashboard, Menu, Moon, PackageOpen, Settings, Sun, Upload, X } from 'lucide-react'
 import { useCollection } from '../app/useCollection'
 import { useTranslation } from '../i18n'
 import { applyThemePreference, getThemePreference, resolveTheme, saveThemePreference, type ThemePreference } from './theme'
@@ -14,11 +14,10 @@ const navItems = [
 ]
 
 export function Layout() {
-  const { auth, dirty, saving, error, mockDataLoaded, sync, login, completeLogin, loginPrompt, setError } = useCollection()
+  const { auth, dirty, remoteChanged, saving, error, mockDataLoaded, sync, loadRemote, login, completeLogin, loginPrompt, setError } = useCollection()
   const { locale, setLocale, t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => getThemePreference())
-  const navigate = useNavigate()
 
   useEffect(() => {
     applyThemePreference(themePreference)
@@ -35,7 +34,7 @@ export function Layout() {
     return () => window.removeEventListener('themechange', handleThemeChange)
   }, [])
 
-  const runSync = async (): Promise<void> => {
+  const runUpload = async (): Promise<void> => {
     try {
       if (!auth) {
         if (loginPrompt) await completeLogin()
@@ -43,6 +42,14 @@ export function Layout() {
       } else {
         await sync()
       }
+    } catch {
+      // The provider exposes the actionable error state.
+    }
+  }
+
+  const runDownload = async (): Promise<void> => {
+    try {
+      await loadRemote()
     } catch {
       // The provider exposes the actionable error state.
     }
@@ -99,10 +106,35 @@ export function Layout() {
             <span className={`status-dot ${dirty ? 'status-dot-dirty' : 'status-dot-ok'}`} />
             {dirty ? t('layout.unsavedChanges') : t('layout.localDataCurrent')}
           </div>
-          <button className="button button-primary button-compact" type="button" disabled={saving} onClick={() => void runSync()}>
-            <Cloud size={16} />
-            {saving ? t('layout.syncing') : auth ? t('layout.sync') : loginPrompt ? t('layout.confirmAuth') : t('layout.connectGithub')}
-          </button>
+          {auth ? (
+            <div className="topbar-actions">
+              <button
+                className="button button-primary button-compact sync-action"
+                type="button"
+                disabled={saving || !dirty}
+                aria-label={t('layout.upload')}
+                onClick={() => void runUpload()}
+              >
+                <Upload size={16} />
+                <span className="toolbar-action-text">{t('layout.upload')}</span>
+              </button>
+              <button
+                className="button button-secondary button-compact sync-action"
+                type="button"
+                disabled={saving || !remoteChanged}
+                aria-label={t('layout.download')}
+                onClick={() => void runDownload()}
+              >
+                <Download size={16} />
+                <span className="toolbar-action-text">{t('layout.download')}</span>
+              </button>
+            </div>
+          ) : (
+            <button className="button button-primary button-compact" type="button" disabled={saving} onClick={() => void runUpload()}>
+              <Cloud size={16} />
+              {loginPrompt ? t('layout.confirmAuth') : t('layout.connectGithub')}
+            </button>
+          )}
         </header>
         {error && (
           <div className="error-banner" role="alert">
@@ -116,9 +148,6 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
-      <button className="mobile-sync-fab" type="button" onClick={() => navigate('/settings')} aria-label={t('layout.syncSettings')}>
-        <Cloud size={18} />
-      </button>
     </div>
   )
 }
